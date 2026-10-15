@@ -1,0 +1,1460 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="かんたんレジ">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#ffffff">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>かんたんレジ</title>
+<style>
+  /* 完全オフライン動作: 外部ファイル・CDN・Webフォントは一切使わない */
+  :root {
+    --bg: #ffffff;
+    --bg-page: #E1F2E6;
+    --bg-subtle: #F3F4F6;
+    --text: #333333;
+    --text-muted: #6B7280;
+    --text-faint: #9CA3AF;
+    --danger: #DC2626;
+    --accent: #0F766E;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --shadow-sm: 0 4px 16px rgba(17, 24, 39, 0.06);
+    --shadow-md: 0 8px 24px rgba(17, 24, 39, 0.10);
+
+    --btn-blue-bg: #DBEAFE;   --btn-blue-text: #1E40AF;   --btn-blue-hover: #BFDBFE;
+    --btn-green-bg: #D1FAE5;  --btn-green-text: #065F46;  --btn-green-hover: #A7F3D0;
+    --btn-red-bg: #FEE2E2;    --btn-red-text: #991B1B;    --btn-red-hover: #FECACA;
+    --btn-amber-bg: #FEF3C7;  --btn-amber-text: #92400E;  --btn-amber-hover: #FDE68A;
+    --btn-gray-bg: #E5E7EB;   --btn-gray-text: #374151;   --btn-gray-hover: #D1D5DB;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  * { touch-action: manipulation; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: var(--bg-page);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic", "Noto Sans JP", "Segoe UI", Roboto, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none; user-select: none;
+    touch-action: manipulation;
+    overscroll-behavior: none;
+  }
+  input { -webkit-user-select: text; user-select: text; }
+  button { font-family: inherit; touch-action: manipulation; }
+  svg.i { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex: none; }
+
+  .app { display: flex; flex-direction: column; height: 100vh; height: 100dvh; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+
+  /* ---------- ヘッダー(タブ) ---------- */
+  .topbar { background: var(--bg); display: flex; align-items: center; gap: 8px; padding: 0 24px; box-shadow: var(--shadow-sm); flex: none; }
+  .topbar h1 { margin: 0 24px 0 0; font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .tab { appearance: none; border: none; background: none; padding: 18px 20px; font-size: 16px; font-weight: 600; color: var(--text-muted); cursor: pointer; border-bottom: 3px solid transparent; display: flex; align-items: center; gap: 8px; }
+  .tab.active { color: #1D4ED8; border-bottom-color: #2563EB; }
+
+  /* ---------- ボタン共通 ---------- */
+  .btn { appearance: none; border: none; border-radius: var(--radius-md); padding: 12px 18px; font-size: 16px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; transition: background .12s ease, transform .05s ease; }
+  .btn:active { transform: translateY(1px); }
+  .btn-blue  { background: var(--btn-blue-bg);  color: var(--btn-blue-text); }  .btn-blue:hover  { background: var(--btn-blue-hover); }
+  .btn-green { background: var(--btn-green-bg); color: var(--btn-green-text); } .btn-green:hover { background: var(--btn-green-hover); }
+  .btn-red   { background: var(--btn-red-bg);   color: var(--btn-red-text); }   .btn-red:hover   { background: var(--btn-red-hover); }
+  .btn-amber { background: var(--btn-amber-bg); color: var(--btn-amber-text); } .btn-amber:hover { background: var(--btn-amber-hover); }
+  .btn-gray  { background: var(--btn-gray-bg);  color: var(--btn-gray-text); }  .btn-gray:hover  { background: var(--btn-gray-hover); }
+  .btn-sm { padding: 8px 12px; font-size: 14px; border-radius: var(--radius-sm); }
+  .btn:disabled { opacity: .45; cursor: default; }
+
+  /* ---------- レジ画面 ---------- */
+  .register { flex: 1; min-height: 0; display: grid; grid-template-columns: 1fr clamp(340px, 40vw, 440px); gap: 24px; padding: 24px; }
+  .left { min-height: 0; display: flex; flex-direction: column; gap: 14px; }
+  .products-wrap { overflow-y: auto; min-height: 0; padding: 2px; flex: 1; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px; }
+  .group + .group { margin-top: 22px; }
+  .cat-head { display: flex; align-items: baseline; gap: 10px; margin: 0 2px 10px; font-size: 15px; font-weight: 800; color: #374151; }
+  .cat-head .n { font-size: 12px; font-weight: 600; color: var(--text-muted); }
+  .cat-chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 2px; flex: none; }
+  .chip { appearance: none; border: none; flex: none; background: var(--bg); color: var(--text); border-radius: 999px; padding: 10px 16px; font-size: 15px; font-weight: 700; cursor: pointer; box-shadow: var(--shadow-sm); display: inline-flex; align-items: center; gap: 8px; font-family: inherit; }
+  .chip .n { font-size: 12px; font-weight: 700; color: var(--text-muted); background: var(--bg-subtle); border-radius: 999px; padding: 2px 8px; }
+  .chip.active { background: var(--btn-blue-bg); color: var(--btn-blue-text); }
+  .chip.active .n { background: #fff; color: var(--btn-blue-text); }
+  .product { position: relative; appearance: none; border: none; background: var(--bg); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); min-height: 108px; padding: 28px 12px 16px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; cursor: pointer; color: var(--text); transition: box-shadow .15s ease, transform .05s ease; }
+  .product:active { transform: scale(.97); box-shadow: var(--shadow-md); }
+  .product .name { font-size: 18px; font-weight: 700; text-align: center; line-height: 1.3; word-break: break-all; }
+  .product .price { font-size: 15px; color: var(--text-muted); }
+  .product .qty-badge { position: absolute; top: 8px; right: 8px; min-width: 30px; height: 30px; padding: 0 8px; border-radius: 15px; background: #2563EB; color: #fff; font-weight: 800; font-size: 15px; display: none; align-items: center; justify-content: center; }
+  .product.in-cart { box-shadow: 0 0 0 3px #93C5FD, var(--shadow-sm); }
+  .product.in-cart .qty-badge { display: flex; }
+
+  .empty-state { background: var(--bg); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: 40px 24px; text-align: center; color: var(--text-muted); line-height: 1.8; }
+  .empty-state .actions { margin-top: 16px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+  .panel { background: var(--bg); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; min-height: 0; overflow-y: auto; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px 8px; font-weight: 700; font-size: 16px; flex: none; }
+  .cart-list { flex: 1 1 140px; min-height: 140px; overflow-y: auto; padding: 0 12px; }
+  .cart-empty { color: var(--text-faint); text-align: center; padding: 28px 0; font-size: 15px; }
+  .cart-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; padding: 10px 8px; background: var(--bg-subtle); border-radius: var(--radius-md); margin-bottom: 8px; }
+  .cart-row .info { min-width: 0; }
+  .cart-row .info .n { font-weight: 700; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cart-row .info .p { font-size: 13px; color: var(--text-muted); }
+  .stepper { display: flex; align-items: center; gap: 6px; }
+  .stepper button { appearance: none; border: none; width: 40px; height: 40px; border-radius: 10px; background: var(--bg); box-shadow: var(--shadow-sm); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .stepper button:active { background: var(--btn-gray-bg); }
+  .stepper .q { min-width: 30px; text-align: center; font-size: 18px; font-weight: 800; }
+  .cart-row .sub { min-width: 72px; text-align: right; font-weight: 700; font-size: 16px; }
+
+  .pay { flex: none; padding: 12px 20px 20px; border-top: 1px solid #F0F1F3; }
+  .sum-line { display: flex; align-items: baseline; justify-content: space-between; padding: 4px 0; }
+  .sum-line .label { color: var(--text-muted); font-size: 14px; font-weight: 600; }
+  .sum-line .val { font-weight: 800; font-variant-numeric: tabular-nums; }
+  .sum-total .val { font-size: 34px; }
+  .sum-recv .val { font-size: 24px; }
+  .change-box { margin: 8px 0 12px; padding: 10px 14px; border-radius: var(--radius-md); background: var(--bg-subtle); display: flex; align-items: baseline; justify-content: space-between; min-height: 64px; }
+  .change-box .label { font-size: 14px; font-weight: 700; color: var(--text-muted); }
+  .change-box .val { font-size: 38px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .change-box.ok { background: #CCFBF1; } .change-box.ok .label { color: #115E59; } .change-box.ok .val { color: #0F766E; }
+  .change-box.short { background: #FEE2E2; } .change-box.short .label { color: #991B1B; } .change-box.short .val { color: #B91C1C; font-size: 30px; }
+  .change-box.idle .val { font-size: 15px; font-weight: 600; color: var(--text-faint); }
+
+  .keys { display: grid; grid-template-columns: repeat(3, 1fr) 1.15fr; gap: 8px; }
+  .key { appearance: none; border: none; height: 46px; border-radius: 10px; background: var(--bg-subtle); color: var(--text); font-size: 20px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .key:active { background: var(--btn-gray-bg); }
+  .key.quick { background: var(--btn-blue-bg); color: var(--btn-blue-text); font-size: 15px; }
+  .key.quick:active { background: var(--btn-blue-hover); }
+  .key.quick.exact { background: var(--btn-amber-bg); color: var(--btn-amber-text); }
+  .key.fn { background: var(--btn-gray-bg); color: var(--btn-gray-text); font-size: 16px; }
+  .done-btn { width: 100%; margin-top: 12px; padding: 16px; font-size: 18px; }
+
+  /* ---------- 商品登録画面 ---------- */
+  .manage { flex: 1; min-height: 0; overflow-y: auto; padding: 24px; }
+  .manage-inner { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+  .card { background: var(--bg); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); padding: 24px; }
+  .card h2 { margin: 0 0 16px; font-size: 17px; }
+  .add-form { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; }
+  .field { display: flex; flex-direction: column; gap: 6px; }
+  .field label { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+  .field.grow { flex: 1 1 200px; } .field.price { flex: 0 1 150px; }
+  .txt { width: 100%; padding: 12px 14px; font-size: 16px; font-family: inherit; color: var(--text); background: #fff; border: 1.5px solid #E5E7EB; border-radius: var(--radius-sm); outline: none; }
+  .txt:focus { border-color: #60A5FA; box-shadow: 0 0 0 3px #DBEAFE; }
+  .hint { margin: 12px 0 0; font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+  .err { color: var(--danger); font-size: 13px; font-weight: 600; margin-top: 8px; min-height: 18px; }
+  .m-row { display: grid; grid-template-columns: auto 1fr 130px auto; gap: 10px; align-items: center; padding: 12px 0; border-radius: var(--radius-sm); }
+  .m-row .sub { grid-column: 2 / 5; display: grid; grid-template-columns: 1fr 1.4fr; gap: 10px; }
+  .m-row.flash { animation: flash 1.5s ease-out; }
+  @keyframes flash { from { background: #BFDBFE; } to { background: transparent; } }
+  .txt.need { background: #FEF9C3; border-color: #FACC15; }
+  select.txt { appearance: auto; -webkit-appearance: menulist; padding: 11px 10px; }
+  .field.cat { flex: 0 1 150px; }
+  .c-row { display: grid; grid-template-columns: auto 1fr auto auto; gap: 10px; align-items: center; padding: 10px 0; }
+  .c-row + .c-row { border-top: 1px solid #F0F1F3; }
+  .quick-label { font-size: 13px; color: var(--text-muted); font-weight: 600; }
+  .sub-title { margin: 18px 0 6px; font-size: 13px; font-weight: 700; color: var(--text-muted); }
+  .del-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 12px; background: var(--bg-subtle); border-radius: var(--radius-sm); margin-bottom: 6px; font-size: 14px; }
+  .offline-box { margin: 0 0 14px; padding: 12px 16px; border-radius: var(--radius-md); font-size: 14px; font-weight: 600; line-height: 1.7; background: var(--bg-subtle); color: var(--text); }
+  .offline-box.ok { background: #CCFBF1; color: #115E59; }
+  .offline-box.wait { background: #FEF3C7; color: #92400E; }
+  .tips { margin: 0; padding-left: 20px; font-size: 14px; line-height: 1.9; color: var(--text); }
+  .modal-back { position: fixed; inset: 0; z-index: 60; background: rgba(31, 41, 55, .38); display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .modal-box { background: #fff; border-radius: var(--radius-lg); box-shadow: var(--shadow-md); padding: 24px; width: min(440px, 100%); display: flex; flex-direction: column; gap: 12px; }
+  .modal-box.wait .btn { opacity: .45; }
+  .modal-box h3 { margin: 0; font-size: 18px; }
+  .modal-box p { margin: 0; font-size: 14px; color: var(--text-muted); line-height: 1.7; }
+  .modal-box .btn { padding: 16px; font-size: 16px; }
+  .diff-note { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+  .m-row + .m-row { border-top: 1px solid #F0F1F3; }
+  .move { display: flex; gap: 6px; }
+  .move button { appearance: none; border: none; width: 40px; height: 40px; border-radius: 10px; background: var(--btn-gray-bg); color: var(--btn-gray-text); cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; }
+  .move button:disabled { opacity: .35; }
+  .move svg.i { width: 20px; height: 20px; }
+  .yen-wrap { position: relative; }
+  .yen-wrap .yen { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted); pointer-events: none; }
+  .yen-wrap .txt { padding-left: 30px; }
+  .count { color: var(--text-muted); font-size: 14px; font-weight: 600; }
+
+  .csv-actions { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  textarea.txt { resize: vertical; min-height: 120px; line-height: 1.6; font-family: ui-monospace, Menlo, Consolas, "Noto Sans Mono", monospace; }
+  .csv-msg { margin-top: 12px; font-size: 14px; font-weight: 600; color: var(--btn-green-text); min-height: 20px; }
+  .csv-msg.bad { color: var(--danger); }
+  .preview { margin-top: 16px; padding: 18px; border-radius: var(--radius-md); background: var(--bg-subtle); }
+  .preview h3 { margin: 0 0 10px; font-size: 16px; }
+  .preview .errs { margin: 8px 0; padding: 10px 14px; background: #FEE2E2; color: #991B1B; border-radius: var(--radius-sm); font-size: 13px; line-height: 1.7; max-height: 38vh; overflow-y: auto; }
+  .preview .plist { margin: 8px 0 12px; font-size: 14px; line-height: 1.7; max-height: 160px; overflow-y: auto; background: #fff; border-radius: var(--radius-sm); padding: 8px 14px; }
+  .preview .plist div { display: flex; justify-content: space-between; gap: 12px; }
+  .radio-row { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
+  .radio-row label { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; line-height: 1.5; cursor: pointer; }
+  .radio-row input { width: 20px; height: 20px; margin-top: 2px; flex: none; }
+  .radio-row small { display: block; color: var(--text-muted); font-size: 12px; }
+
+  .toast { position: fixed; top: 8px; right: 16px; z-index: 50; min-width: 240px; max-width: calc(100vw - 440px); pointer-events: none; background: #1F2937; color: #fff; padding: 9px 10px 9px 16px; border-radius: var(--radius-md); box-shadow: var(--shadow-md); font-size: 14px; font-weight: 600; display: flex; gap: 12px; align-items: center; line-height: 1.5; }
+  .toast button { appearance: none; border: none; background: #fff; color: #1F2937; font-weight: 800; font-size: 15px; padding: 10px 16px; border-radius: 8px; cursor: pointer; flex: none; pointer-events: auto; }
+  .prev-line { padding: 0 20px 6px; font-size: 13px; color: var(--text-muted); flex: none; }
+  .prev-line:empty { display: none; }
+  .sum-recv .label { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+  @media (max-width: 900px) { .sum-recv .label small { display: none; } }
+  .sum-recv .label small { font-size: 11px; color: var(--text-faint); font-weight: 500; }
+  #recvClear { padding: 6px 12px; font-size: 13px; border-radius: 8px; }
+  .stepper button.rm { background: var(--btn-red-bg); color: var(--btn-red-text); }
+  .lock-badge { appearance: none; border: none; cursor: pointer; display: none; margin-left: auto; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--btn-amber-text); background: var(--btn-amber-bg); padding: 8px 14px; border-radius: 999px; font-family: inherit; }
+  .lock-badge small { font-weight: 500; font-size: 11px; }
+  .locked .lock-badge { display: inline-flex; }
+  .locked #tabManage { display: none; }
+  .topbar h1 { -webkit-touch-callout: none; }
+  .diff-sum { font-size: 14px; font-weight: 700; margin: 4px 0 6px; line-height: 1.6; }
+  .diff-list { margin: 6px 0 12px; font-size: 14px; line-height: 1.7; max-height: 38vh; overflow-y: auto; background: #fff; border-radius: var(--radius-sm); padding: 8px 14px; }
+  .diff-list div { display: flex; gap: 10px; }
+  .diff-list .tag { flex: none; width: 3.4em; font-weight: 700; }
+  .diff-list .add .tag { color: #065F46; } .diff-list .chg .tag { color: #92400E; } .diff-list .gone .tag { color: #991B1B; }
+  .warn-amber { margin: 8px 0; padding: 10px 14px; background: #FEF3C7; color: #92400E; border-radius: var(--radius-sm); font-size: 13px; line-height: 1.7; }
+  @media (max-height: 860px) {
+    .key { height: 42px; font-size: 19px; }
+    .sum-total .val { font-size: 30px; }
+    .change-box { min-height: 56px; margin: 6px 0 10px; padding: 8px 14px; }
+    .change-box .val { font-size: 34px; }
+    .pay { padding: 8px 20px 16px; }
+    .done-btn { padding: 13px; margin-top: 10px; }
+    .cart-row { padding: 8px; margin-bottom: 6px; }
+  }
+  @media (max-width: 640px) {
+    .register { display: flex; flex-direction: column; gap: 12px; padding: 12px; overflow: hidden; }
+    .left { flex: 1 1 0; min-height: 0; }
+    .products-wrap { overflow-y: auto; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; }
+    .product { min-height: 84px; padding: 24px 8px 12px; }
+    .product .name { font-size: 16px; }
+    .cat-chips { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .chip { padding: 8px 14px; font-size: 14px; }
+    .panel { flex: 0 0 auto; max-height: 66dvh; margin-top: 0; overflow-y: auto; }
+    .panel-head { padding: 12px 16px 6px; }
+    .cart-list { flex: 1 1 56px; min-height: 56px; }
+    .pay { padding: 8px 14px 14px; }
+    .sum-total .val { font-size: 26px; }
+    .sum-recv .val { font-size: 20px; }
+    .change-box { min-height: 44px; margin: 4px 0 8px; padding: 6px 12px; }
+    .change-box .val { font-size: 28px; }
+    .keys { gap: 6px; }
+    .key { height: 36px; font-size: 17px; }
+    .done-btn { padding: 11px; margin-top: 8px; font-size: 16px; }
+    .topbar { padding: 0 8px; } .topbar h1 { display: none; }
+    .tab { padding: 14px 14px; font-size: 15px; }
+    .m-row { grid-template-columns: auto 1fr 110px auto; }
+    .m-row .sub { grid-template-columns: 1fr; }
+    .manage { padding: 12px; }
+    .card { padding: 18px; }
+    .toast { max-width: calc(100vw - 24px); right: 12px; top: 6px; }
+    .lock-badge small { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<!-- インラインSVGアイコン(外部読み込みなし) -->
+<svg style="position:absolute;width:0;height:0;overflow:hidden" aria-hidden="true">
+  <symbol id="i-cart" viewBox="0 0 24 24"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></symbol>
+  <symbol id="i-tag" viewBox="0 0 24 24"><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8z"/><circle cx="7" cy="7" r="1.5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-minus" viewBox="0 0 24 24"><path d="M5 12h14"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6M10 11v6M14 11v6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M21 4H8l-7 8 7 8h13a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2z"/><path d="m18 9-6 6M12 9l6 6"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></symbol>
+  <symbol id="i-top" viewBox="0 0 24 24"><path d="m17 11-5-5-5 5M17 18l-5-5-5 5"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 15-6.7L21 8M21 3v5h-5M21 12a9 9 0 0 1-15 6.7L3 16M3 21v-5h5"/></symbol>
+  <symbol id="i-sort" viewBox="0 0 24 24"><path d="M3 6h13M3 12h9M3 18h5M17 8v10M17 18l-3-3M17 18l3-3"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+</svg>
+
+<div class="app">
+  <div class="topbar">
+    <h1 id="appTitle"><svg class="i"><use href="#i-cart"/></svg>かんたんレジ</h1>
+    <button class="tab active" id="tabRegister" type="button"><svg class="i"><use href="#i-cart"/></svg>レジ</button>
+    <button class="tab" id="tabManage" type="button"><svg class="i"><use href="#i-tag"/></svg>商品登録</button>
+    <button class="lock-badge" id="lockBadge" type="button"><svg class="i"><use href="#i-lock"/></svg>レジ専用モード<small>(解除: 左上の題名を3秒長押し)</small></button>
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+  <!-- 前の会計が終わっていないときの確認 -->
+  <div class="modal-back" id="chooseModal" hidden>
+    <div class="modal-box" role="dialog" aria-modal="true">
+      <h3>前のお客様の会計が終わっていません</h3>
+      <p id="chooseInfo"></p>
+      <button class="btn btn-green" id="chooseNew" type="button">会計おわりにして、新しいお客様にする</button>
+      <button class="btn btn-blue" id="chooseSame" type="button">同じお客様に追加する</button>
+      <button class="btn btn-gray" id="chooseCancel" type="button">やめる(商品は入れない)</button>
+    </div>
+  </div>
+
+  <!-- レジ -->
+  <div class="register" id="viewRegister">
+    <div class="left">
+      <div class="cat-chips" id="catChips" hidden></div>
+      <div class="products-wrap"><div id="products"></div></div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <span>お買い物かご</span>
+        <button class="btn btn-gray btn-sm" id="clearCartBtn" type="button"><svg class="i"><use href="#i-refresh"/></svg>全部やり直す</button>
+      </div>
+      <div class="prev-line" id="prevLine"></div>
+      <div class="cart-list" id="cartList"></div>
+
+      <div class="pay">
+        <div class="sum-line sum-total"><span class="label">合計</span><span class="val" id="totalVal">¥0</span></div>
+        <div class="sum-line sum-recv"><span class="label">お預かり<small>お札ボタンは足し算</small><button class="btn btn-gray btn-sm" id="recvClear" type="button">クリア</button></span><span class="val" id="recvVal">¥0</span></div>
+        <div class="change-box idle" id="changeBox"><span class="label" id="changeLabel">おつり</span><span class="val" id="changeVal"></span></div>
+
+        <div class="keys" id="keys"></div>
+        <button class="btn btn-green done-btn" id="doneBtn" type="button"><svg class="i"><use href="#i-check"/></svg>会計おわり(次のお客様へ)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 商品登録 -->
+  <div class="manage" id="viewManage" hidden>
+    <div class="manage-inner">
+      <div class="card">
+        <h2>使う前に確認してください</h2>
+        <div class="offline-box" id="offlineBox" hidden></div>
+        <ul class="tips">
+          <li>登録内容は、この端末の、このブラウザの中に保存されます。別のブラウザや別の開き方では、別の登録として扱われます。</li>
+          <li>ブラウザの履歴・サイトデータを消すと、登録も消えます。書き出したCSVを控えとして残しておくと安心です。</li>
+          <li>iPad・iPhoneの「ファイル」アプリでHTMLを開くと、画像のように表示されて押せないことがあります。その場合は、「Documents」(Readdle社の無料アプリ)など、HTMLを動かせるアプリで開いてください。Androidは Chrome で開けます。</li>
+          <li>アプリごとに保存場所が別なので、一度決めた開き方を、毎回使ってください。別のアプリで開くと、登録が空に見えます。</li>
+          <li>ファイルの開き方は、端末やブラウザによって違います。販売会の前日に、実際に使う端末を機内モード(電波なし)にして、「開く → 商品を押す → 会計する」まで通して試してください。</li>
+          <li>同じ内容を複数の端末で使うときは、CSVで書き出して、それぞれの端末に読み込みます。</li>
+          <li id="installTip" hidden>ホーム画面に追加すると、アプリのように全画面で開けます。iPad・iPhone: Safariの「共有」ボタン →「ホーム画面に追加」。Android: Chromeのメニュー →「アプリをインストール」または「ホーム画面に追加」。</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h2>レジ専用モード(販売中の誤操作よけ)</h2>
+        <p class="hint" style="margin-top:0">販売をはじめる前に押すと「商品登録」タブが隠れ、生徒が商品や金額を書き換えてしまう事故を防げます。<b>解除するときは、画面左上の「かんたんレジ」の文字を3秒間おし続けてください。</b></p>
+        <div style="margin-top:14px"><button class="btn btn-amber" id="lockBtn" type="button"><svg class="i"><use href="#i-lock"/></svg>レジ専用モードにする</button></div>
+      </div>
+
+      <div class="card">
+        <h2>商品を追加する</h2>
+        <form class="add-form" id="addForm" autocomplete="off">
+          <div class="field grow"><label for="newName">名前</label><input class="txt" id="newName" maxlength="20" placeholder="例: トマト" enterkeyhint="next"></div>
+          <div class="field price"><label for="newPrice">金額(円)</label><input class="txt" id="newPrice" inputmode="numeric" maxlength="12" placeholder="例: 200" enterkeyhint="done"></div>
+          <div class="field cat"><label for="newCat">分野</label><select class="txt" id="newCat"></select></div>
+          <button class="btn btn-blue" type="submit"><svg class="i"><use href="#i-plus"/></svg>追加</button>
+        </form>
+        <div class="err" id="addErr"></div>
+        <div class="csv-actions" style="margin-top:6px">
+          <span class="quick-label">たくさん登録するときは:</span>
+          <button class="btn btn-gray btn-sm" id="csvTemplateBtn2" type="button"><svg class="i"><use href="#i-download"/></svg>ひな形CSVをダウンロード</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>分野(カテゴリ)で分ける <span class="count" id="catCount"></span></h2>
+        <p class="hint" style="margin-top:0">「野菜」「果物」「加工品」のように分野をつくっておくと、レジ画面で分野ごとにまとまって表示され、上のボタンで絞り込めます。分けなくても使えます。</p>
+        <div class="csv-actions" id="catQuick" style="margin-top:12px"></div>
+        <form class="add-form" id="catForm" autocomplete="off" style="margin-top:14px">
+          <div class="field grow"><label for="newCatName">分野の名前</label><input class="txt" id="newCatName" maxlength="12" placeholder="例: 野菜" enterkeyhint="done"></div>
+          <button class="btn btn-blue" type="submit"><svg class="i"><use href="#i-plus"/></svg>分野を追加</button>
+        </form>
+        <div class="err" id="catErr"></div>
+        <div id="catList"></div>
+      </div>
+
+      <div class="card">
+        <h2>登録済みの商品 <span class="count" id="countLabel"></span></h2>
+        <div class="csv-actions">
+          <button class="btn btn-blue btn-sm" id="sortKanaBtn" type="button"><svg class="i"><use href="#i-sort"/></svg>あいうえお順に並べ替える</button>
+          <button class="btn btn-gray btn-sm" id="sortCatBtn" type="button"><svg class="i"><use href="#i-folder"/></svg>分野ごとにまとめる</button>
+        </div>
+        <div class="csv-msg" id="sortMsg"></div>
+        <div id="manageList"></div>
+        <div id="recentDel"></div>
+        <p class="hint">名前・金額・分野・よみがなは、書き換えるとそのまま保存されます。▲▼でレジ画面のボタンの並び順を変えられます(「一番上へ」もあります)。「よみがな」は、あいうえお順に並べるときに使います。漢字の名前でも自動で入ることが多く、空のままの商品は黄色の欄でお知らせします。</p>
+      </div>
+
+      <div class="card">
+        <h2>CSVで入れる・書き出す(ほかの端末へ移す/まとめて編集)</h2>
+        <div class="csv-actions">
+          <button class="btn btn-blue" id="csvExportBtn" type="button"><svg class="i"><use href="#i-download"/></svg>CSVを書き出す</button>
+          <button class="btn btn-gray" id="csvPickBtn" type="button"><svg class="i"><use href="#i-upload"/></svg>CSVファイルを読み込む</button>
+          <button class="btn btn-amber" id="csvDefaultBtn" type="button" hidden><svg class="i"><use href="#i-refresh"/></svg>最初に入っている商品を読み込む</button>
+          <button class="btn btn-gray" id="csvTemplateBtn" type="button"><svg class="i"><use href="#i-download"/></svg>ひな形CSVをダウンロード</button>
+          <input type="file" id="csvFile" accept=".csv,.txt,text/csv,text/plain" hidden>
+        </div>
+        <div class="csv-msg" id="csvMsg"></div>
+        <div class="field" style="margin-top:8px">
+          <label for="csvText">CSVの中身(コピー・貼り付け用)</label>
+          <textarea class="txt" id="csvText" rows="6" spellcheck="false" placeholder="名前,金額,分野,よみ&#10;トマト,200,野菜,とまと&#10;りんごジャム,600,加工品"></textarea>
+        </div>
+        <div class="csv-actions" style="margin-top:12px">
+          <button class="btn btn-gray btn-sm" id="csvShowBtn" type="button">いまの登録内容をここに表示</button>
+          <button class="btn btn-blue btn-sm" id="csvTextImportBtn" type="button">この欄の内容を読み込む</button>
+        </div>
+        <div id="importPreview"></div>
+        <div id="backupBox" style="margin-top:14px"></div>
+        <p class="hint">
+          形式は1行に1商品で、「名前,金額,分野,よみ」の順です(分野とよみは省略できます。1行目の見出しはあってもなくても構いません)。<br>
+          ほかの端末へ移すには、①「CSVを書き出す」→ ②ファイルをメール・クラウド・AirDropなどで送る → ③もう一方の端末で「CSVファイルを読み込む」。ファイルが扱いにくい端末では、上の欄に表示した文字をコピーして、相手の端末の欄に貼り付けて読み込めます。<br>
+          ExcelやGoogleスプレッドシートで編集して「CSV」で保存したファイルも読み込めます(文字コードは自動判別)。
+        </p>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ================= 保存(この端末の中だけ。売上記録は取らない) =================
+  var STORE_KEY = 'kantan-register-products-v1';
+  var CAT_KEY = 'kantan-register-cats-v1';
+  var BACKUP_KEY = 'kantan-register-backup-v1';
+  var LOCK_KEY = 'kantan-register-locked-v1';
+  function lsGet(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function lsSet(k, v) { try { localStorage.setItem(k, v); } catch (e) { /* 保存できない環境でもレジは動く */ } }
+  function jsonGet(k, fallback) { try { var raw = lsGet(k); return raw ? JSON.parse(raw) : fallback; } catch (e) { return fallback; } }
+
+  // ================= 小さな道具 =================
+  function $(id) { return document.getElementById(id); }
+  function el(tag, cls, text) {
+    var e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function icon(name) {
+    var s = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    s.setAttribute('class', 'i');
+    var u = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+    u.setAttribute('href', '#i-' + name);
+    s.appendChild(u);
+    return s;
+  }
+  function yen(n) { return '¥' + Math.floor(n).toLocaleString('ja-JP'); }
+  function nfkc(s) { return String(s == null ? '' : s).normalize('NFKC'); }
+  function toHira(s) { return s.replace(/[ァ-ヶ]/g, function (c) { return String.fromCharCode(c.charCodeAt(0) - 0x60); }); }
+  // 重複判定用: 全角/半角・ひらがな/カタカナ・大文字/小文字の違いを無視
+  function nameKey(n) { return toHira(nfkc(n)).trim().toLowerCase(); }
+  function parsePrice(raw) {
+    var s = nfkc(raw).replace(/[¥￥\\,\s円]/g, '');
+    var m = /^(\d{1,7})(\.0+)?$/.exec(s);
+    return m ? parseInt(m[1], 10) : null;
+  }
+
+  // ================= よみがな(あいうえお順の並べ替え用) =================
+  var READ_DICT = {
+    '小松菜':'こまつな','青梗菜':'ちんげんさい','ほうれん草':'ほうれんそう','法蓮草':'ほうれんそう','水菜':'みずな','春菊':'しゅんぎく','白菜':'はくさい',
+    '大根':'だいこん','人参':'にんじん','玉葱':'たまねぎ','玉ねぎ':'たまねぎ','長ねぎ':'ながねぎ','長葱':'ながねぎ','長芋':'ながいも','山芋':'やまいも','里芋':'さといも',
+    '馬鈴薯':'ばれいしょ','南瓜':'かぼちゃ','胡瓜':'きゅうり','茄子':'なす','枝豆':'えだまめ','大豆':'だいず','小豆':'あずき','黒豆':'くろまめ','蕪':'かぶ','牛蒡':'ごぼう',
+    '蓮根':'れんこん','生姜':'しょうが','大蒜':'にんにく','葱':'ねぎ','唐辛子':'とうがらし','玄米':'げんまい','新米':'しんまい','米粉':'こめこ','米':'こめ',
+    '苺':'いちご','林檎':'りんご','葡萄':'ぶどう','梨':'なし','桃':'もも','柿':'かき','蜜柑':'みかん','西瓜':'すいか','柚子':'ゆず','檸檬':'れもん','杏':'あんず','栗':'くり','梅':'うめ',
+    '胡麻':'ごま','蕎麦':'そば','小麦':'こむぎ','味噌':'みそ','醤油':'しょうゆ','漬物':'つけもの','手作り':'てづくり','詰め合わせ':'つめあわせ','詰合せ':'つめあわせ','詰合わせ':'つめあわせ',
+    '野菜':'やさい','果物':'くだもの','餅':'もち','団子':'だんご','蜂蜜':'はちみつ','牛乳':'ぎゅうにゅう','卵':'たまご','花':'はな','苗':'なえ','種':'たね','袋':'ふくろ','束':'たば',
+    '赤':'あか','青':'あお','白':'しろ','黒':'くろ','黄':'き','紫':'むらさき','緑':'みどり','玉':'たま','長':'なが','大':'おお','小':'こ','汁':'しる','粉':'こな','油':'あぶら',
+    '酢':'す','大葉':'おおば','米ぬか':'こめぬか','漬け':'づけ','茶':'ちゃ','豆':'まめ','芋':'いも','菜':'な','草':'くさ','瓜':'うり','牛':'うし','豚':'ぶた','鶏':'とり','肉':'にく','魚':'さかな','塩':'しお','砂糖':'さとう'
+  };
+  var READ_KEYS = Object.keys(READ_DICT).sort(function (a, b) { return b.length - a.length; });
+  var KANJI_RE = /[㐀-䶿一-鿿豈-﫿々〆〇]/;
+  // 名前からよみがなを自動で作る。漢字が残って分からないときは '' を返す
+  function autoReading(name) {
+    var s = nfkc(name);
+    var stripped = s.replace(/\([^)]*\)/g, '');            // (2kg) (大) (3本,袋入) などの注記は読みに入れない
+    if (stripped.trim()) s = stripped;
+    READ_KEYS.forEach(function (k) { if (s.indexOf(k) >= 0) s = s.split(k).join(READ_DICT[k]); });
+    s = toHira(s).toLowerCase().replace(/[\s()（）「」『』・,、。!！?？~〜]/g, '');
+    return KANJI_RE.test(s) ? '' : s;
+  }
+  function needsReading(p) { return !p.reading && KANJI_RE.test(p.name); }
+  function readingKey(p) { return p.reading ? p.reading : toHira(nfkc(p.name)).toLowerCase(); }
+  var collator = null;
+  try { collator = new Intl.Collator('ja'); } catch (e) { collator = null; }
+  function cmpKana(a, b) { return collator ? collator.compare(a, b) : (a < b ? -1 : a > b ? 1 : 0); }
+  function stableSort(list, cmp) {
+    return list.map(function (v, i) { return { v: v, i: i }; })
+      .sort(function (x, y) { return cmp(x.v, y.v) || (x.i - y.i); })
+      .map(function (o) { return o.v; });
+  }
+
+  // ================= 状態 =================
+  var seq = Date.now();
+  function newId() { return 'p' + (seq++); }
+  var categories = [];     // 分野の並び順 ['野菜','果物',...]
+  var products = [];       // [{id, name, price, cat, reading}]
+  var cart = {};           // id -> 個数
+  var received = '';       // お預かり(数字の文字列)
+  var catFilter = '';      // レジ画面の絞り込み('' = すべて, '__none__' = 未分類)
+  var recentDeleted = [];  // 最近消した商品(メモリのみ)
+
+  function ensureCat(name) {
+    if (!name) return;
+    for (var i = 0; i < categories.length; i++) if (nfkc(categories[i]) === nfkc(name)) return;
+    categories.push(name);
+  }
+  function normalizeProduct(p) {
+    var name = String(p.name == null ? '' : p.name).trim().slice(0, 20);
+    var price = Number.isFinite(p.price) ? Math.max(0, Math.floor(p.price)) : 0;
+    var cat = typeof p.cat === 'string' ? p.cat.trim() : '';
+    var reading = typeof p.reading === 'string' ? p.reading : autoReading(name);
+    return { id: p.id || newId(), name: name, price: price, cat: cat, reading: reading };
+  }
+  function loadAll() {
+    var cats = jsonGet(CAT_KEY, []);
+    categories = Array.isArray(cats) ? cats.filter(function (c) { return typeof c === 'string' && c; }) : [];
+    var arr = jsonGet(STORE_KEY, []);
+    products = Array.isArray(arr) ? arr.filter(function (p) { return p && typeof p.name === 'string' && p.name.trim(); }).map(normalizeProduct) : [];
+    products.forEach(function (p) { ensureCat(p.cat); });
+  }
+  function saveProducts() { lsSet(STORE_KEY, JSON.stringify(products)); }
+  function saveCats() { lsSet(CAT_KEY, JSON.stringify(categories)); }
+  function saveAll() { saveProducts(); saveCats(); }
+  loadAll();
+
+  function findProduct(id) { for (var i = 0; i < products.length; i++) if (products[i].id === id) return products[i]; return null; }
+  function findByName(name) { var k = nameKey(name); for (var i = 0; i < products.length; i++) if (nameKey(products[i].name) === k) return products[i]; return null; }
+  function total() {
+    var t = 0;
+    Object.keys(cart).forEach(function (id) { var p = findProduct(id); if (p) t += p.price * cart[id]; });
+    return t;
+  }
+  function receivedNum() { return received === '' ? 0 : parseInt(received, 10); }
+  function catLabel(c) { return c ? c : '未分類'; }
+
+  // ================= ひとこと表示(取り消しボタン付き) =================
+  var toastTimer = null, undoActive = false;
+  function hideToast() { clearTimeout(toastTimer); $('toast').hidden = true; undoActive = false; }
+  function toast(msg, actionLabel, actionFn, ms) {
+    var t = $('toast');
+    undoActive = false;
+    t.innerHTML = '';
+    t.appendChild(el('span', '', msg));
+    if (actionLabel) {
+      var b = el('button', '', actionLabel); b.type = 'button';
+      b.onclick = function () { hideToast(); actionFn(); };
+      t.appendChild(b);
+    }
+    t.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(hideToast, ms || (actionLabel ? 8000 : 3500));
+  }
+  function toastUndo(msg, fn, ms) { toast(msg, '元に戻す', fn, ms); undoActive = true; }
+  // レジ操作を始めたら、会計の「元に戻す」は消す(あとから戻すと新しい入力を壊すため)
+  function sealUndo() { if (undoActive) hideToast(); }
+
+  // ================= レジ画面の描画 =================
+  function visibleGroups() {
+    if (categories.length === 0) return [{ name: '', label: '', items: products.slice() }];
+    var groups = [];
+    categories.forEach(function (c) {
+      var items = products.filter(function (p) { return p.cat === c; });
+      if (items.length) groups.push({ name: c, label: c, items: items });
+    });
+    var none = products.filter(function (p) { return !p.cat || categories.indexOf(p.cat) < 0; });
+    if (none.length) groups.push({ name: '__none__', label: '未分類', items: none });
+    return groups;
+  }
+  function renderChips() {
+    var box = $('catChips');
+    box.innerHTML = '';
+    var groups = categories.length ? visibleGroups() : [];
+    if (groups.length === 0) { box.hidden = true; catFilter = ''; return; }
+    if (catFilter && !groups.some(function (g) { return g.name === catFilter; })) catFilter = '';
+    box.hidden = false;
+    var mk = function (label, value, count) {
+      var b = el('button', 'chip' + (catFilter === value ? ' active' : ''));
+      b.type = 'button';
+      b.appendChild(document.createTextNode(label));
+      b.appendChild(el('span', 'n', String(count)));
+      b.onclick = function () { catFilter = value; renderChips(); renderProducts(); };
+      box.appendChild(b);
+    };
+    mk('すべて', '', products.length);
+    groups.forEach(function (g) { mk(g.label, g.name, g.items.length); });
+  }
+  function renderProducts() {
+    var box = $('products');
+    box.innerHTML = '';
+    if (products.length === 0) {
+      var es = el('div', 'empty-state');
+      es.appendChild(el('div', '', 'まだ商品が登録されていません。'));
+      es.appendChild(el('div', '', '「商品登録」で、名前と金額を登録してください。'));
+      var act = el('div', 'actions');
+      var b1 = el('button', 'btn btn-blue', '商品を登録する'); b1.type = 'button';
+      b1.onclick = function () { setMode('manage'); };
+      var b2 = el('button', 'btn btn-gray', 'サンプルを入れてためす'); b2.type = 'button';
+      b2.onclick = function () {
+        ensureCat('野菜');
+        [['トマト', 200], ['きゅうり', 150], ['じゃがいも', 300], ['たまねぎ', 250]].forEach(function (s) {
+          products.push({ id: newId(), name: s[0], price: s[1], cat: '野菜', reading: autoReading(s[0]) });
+        });
+        saveAll(); renderAll();
+      };
+      var b3 = el('button', 'btn btn-gray', 'ひな形CSVをダウンロード'); b3.type = 'button';
+      b3.onclick = function () { giveTemplate(); };
+      act.appendChild(b1); act.appendChild(b2); act.appendChild(b3);
+      es.appendChild(act);
+      box.appendChild(es);
+      return;
+    }
+    var groups = visibleGroups();
+    if (catFilter) groups = groups.filter(function (g) { return g.name === catFilter; });
+    groups.forEach(function (g) {
+      var sec = el('section', 'group');
+      if (g.label) {
+        var head = el('div', 'cat-head', g.label);
+        head.appendChild(el('span', 'n', g.items.length + '品'));
+        sec.appendChild(head);
+      }
+      var grid = el('div', 'grid');
+      g.items.forEach(function (p) {
+        var b = el('button', 'product'); b.type = 'button'; b.dataset.id = p.id;
+        b.appendChild(el('span', 'qty-badge', ''));
+        b.appendChild(el('span', 'name', p.name));
+        b.appendChild(el('span', 'price', yen(p.price)));
+        b.onclick = function () { addToCart(p.id); };
+        grid.appendChild(b);
+      });
+      sec.appendChild(grid);
+      box.appendChild(sec);
+    });
+    updateBadges();
+  }
+  function updateBadges() {
+    var btns = document.querySelectorAll('#products .product');
+    for (var i = 0; i < btns.length; i++) {
+      var q = cart[btns[i].dataset.id] || 0;
+      btns[i].classList.toggle('in-cart', q > 0);
+      btns[i].querySelector('.qty-badge').textContent = q > 0 ? q : '';
+    }
+  }
+  var lastAddedId = null;
+  function renderCart() {
+    var list = $('cartList');
+    list.innerHTML = '';
+    var ids = products.map(function (p) { return p.id; }).filter(function (id) { return cart[id] > 0; });
+    if (ids.length === 0) {
+      list.appendChild(el('div', 'cart-empty', '商品のボタンを押すと、ここに入ります'));
+      return;
+    }
+    ids.forEach(function (id) {
+      var p = findProduct(id);
+      var row = el('div', 'cart-row'); row.dataset.id = id;
+      var info = el('div', 'info');
+      info.appendChild(el('div', 'n', p.name));
+      info.appendChild(el('div', 'p', yen(p.price) + ' × ' + cart[id]));
+      var st = el('div', 'stepper');
+      var minus = el('button'); minus.type = 'button';
+      minus.setAttribute('aria-label', cart[id] === 1 ? 'かごから外す' : '1つ減らす');
+      minus.appendChild(icon(cart[id] === 1 ? 'trash' : 'minus'));
+      if (cart[id] === 1) minus.className = 'rm';
+      minus.onclick = function () { changeQty(id, -1); };
+      var plus = el('button'); plus.type = 'button'; plus.setAttribute('aria-label', '1つ増やす'); plus.appendChild(icon('plus'));
+      plus.onclick = function () { changeQty(id, +1); };
+      st.appendChild(minus); st.appendChild(el('span', 'q', String(cart[id]))); st.appendChild(plus);
+      row.appendChild(info); row.appendChild(st);
+      row.appendChild(el('div', 'sub', yen(p.price * cart[id])));
+      list.appendChild(row);
+    });
+    if (lastAddedId) {
+      var nr = list.querySelector('.cart-row[data-id="' + lastAddedId + '"]');
+      if (nr && nr.scrollIntoView) nr.scrollIntoView({ block: 'nearest' });
+      lastAddedId = null;
+    }
+  }
+  function renderPay() {
+    var t = total(), r = receivedNum();
+    $('totalVal').textContent = yen(t);
+    $('recvVal').textContent = yen(r);
+    var box = $('changeBox'), label = $('changeLabel'), val = $('changeVal');
+    box.className = 'change-box';
+    if (t === 0) {
+      box.classList.add('idle'); label.textContent = 'おつり'; val.textContent = '商品を選んでください';
+    } else if (received === '') {
+      box.classList.add('idle'); label.textContent = 'おつり'; val.textContent = 'お預かり金額を入力';
+    } else if (r >= t) {
+      box.classList.add('ok'); label.textContent = 'おつり'; val.textContent = yen(r - t);
+    } else {
+      box.classList.add('short'); label.textContent = 'あと不足'; val.textContent = yen(t - r);
+    }
+    $('doneBtn').disabled = (t === 0);
+  }
+  function renderRegisterOnly() { updateBadges(); renderCart(); renderPay(); }
+  function renderAll() {
+    renderChips(); renderProducts(); renderCart(); renderPay();
+    renderCatSelects(); renderManage(); renderCatCard(); renderRecentDeleted();
+  }
+
+  // ================= レジ操作 =================
+  function cloneCart() { var o = {}; Object.keys(cart).forEach(function (k) { o[k] = cart[k]; }); return o; }
+  function finishSale() {
+    var t = total(), r = receivedNum();
+    if (t === 0) return;
+    var snap = { cart: cloneCart(), received: received, prev: $('prevLine').textContent };
+    var ok = received !== '' && r >= t;
+    $('prevLine').textContent = '前のお客様: 合計' + yen(t) + (received === '' ? '' : (ok ? ' / おつり' + yen(r - t) : ' / お預かり不足'));
+    cart = {}; received = '';
+    if (catFilter) { catFilter = ''; renderChips(); renderProducts(); }   // 次のお客様のために「すべて」へ戻す
+    renderRegisterOnly();
+    toastUndo('会計おわり(合計' + yen(t) + (ok ? '・おつり' + yen(r - t) : '') + ')', function () {
+      cart = snap.cart; received = snap.received; $('prevLine').textContent = snap.prev; renderRegisterOnly();
+    });
+  }
+  var pendingId = null;
+  var chooseOpenedAt = 0;
+  function chooseReady() { return Date.now() - chooseOpenedAt >= 600; }   // 連打の2回目が誤って確認画面に当たらないように
+  function showChoose(id) {
+    pendingId = id;
+    chooseOpenedAt = Date.now();
+    var box = document.querySelector('#chooseModal .modal-box');
+    box.classList.add('wait'); setTimeout(function () { box.classList.remove('wait'); }, 600);
+    var t = total(), r = receivedNum();
+    $('chooseInfo').textContent = '合計' + yen(t) + '・お預かり' + yen(r) + '・おつり' + yen(r - t) + ' のまま、次の商品が押されました。';
+    $('chooseModal').hidden = false;
+  }
+  function closeChoose() { $('chooseModal').hidden = true; pendingId = null; }
+  function doAdd(id) {
+    sealUndo();
+    if (received !== '') { received = ''; toast('商品が変わったので、お預かり金額をもう一度入力してください'); }
+    if ((cart[id] || 0) >= 99) { toast('1つの商品は99個までです'); renderRegisterOnly(); return; }
+    cart[id] = (cart[id] || 0) + 1;
+    lastAddedId = id;
+    renderRegisterOnly();
+  }
+  function addToCart(id) {
+    var t = total();
+    if (received !== '' && t > 0 && receivedNum() >= t) { showChoose(id); return; }   // 会計おわりの押し忘れかもしれない
+    doAdd(id);
+  }
+  var lastRemoveAt = 0;
+  function changeQty(id, d) {
+    var cur = cart[id] || 0;
+    if (!cur) return;
+    // 行が消えた直後は、下の行が繰り上がって同じ位置に来るので、連打を受け付けない
+    if (Date.now() - lastRemoveAt < 350) return;
+    sealUndo();
+    if (received !== '') { received = ''; toast('商品が変わったので、お預かり金額をもう一度入力してください'); }
+    var q = cur + d;
+    if (q > 99) { toast('1つの商品は99個までです'); return; }
+    if (q <= 0) { delete cart[id]; lastRemoveAt = Date.now(); } else cart[id] = q;
+    renderRegisterOnly();
+  }
+  function clearAll() {
+    if (Object.keys(cart).length === 0 && received === '') return;
+    sealUndo();
+    var snap = { cart: cloneCart(), received: received };
+    cart = {}; received = '';
+    renderRegisterOnly();
+    toastUndo('かごを空にしました', function () { cart = snap.cart; received = snap.received; renderRegisterOnly(); });
+  }
+  $('chooseNew').onclick = function () { if (!chooseReady()) return; var id = pendingId; closeChoose(); finishSale(); if (id) doAdd(id); };
+  $('chooseSame').onclick = function () { if (!chooseReady()) return; var id = pendingId; closeChoose(); if (id) doAdd(id); };
+  $('chooseCancel').onclick = function () { if (chooseReady()) closeChoose(); };
+  $('chooseModal').addEventListener('click', function (e) { if (e.target === this && chooseReady()) closeChoose(); });
+
+  // テンキー
+  (function buildKeys() {
+    var keys = $('keys');
+    var layout = [
+      ['7', '8', '9', { q: 'exact' }],
+      ['4', '5', '6', { q: 1000 }],
+      ['1', '2', '3', { q: 5000 }],
+      ['0', '00', 'back', { q: 10000 }]
+    ];
+    layout.forEach(function (row) {
+      row.forEach(function (k) {
+        var b = el('button', 'key'); b.type = 'button';
+        if (typeof k === 'object') {
+          b.classList.add('quick');
+          if (k.q === 'exact') {
+            b.classList.add('exact'); b.textContent = 'ちょうど';
+            b.onclick = function () { if (total() > 0) { sealUndo(); received = String(total()); renderPay(); } };
+          } else {
+            b.textContent = k.q.toLocaleString('ja-JP');
+            b.onclick = function () { sealUndo(); received = String(Math.min(9999999, receivedNum() + k.q)); renderPay(); };
+          }
+        } else if (k === 'back') {
+          b.classList.add('fn'); b.setAttribute('aria-label', '1文字消す'); b.appendChild(icon('back'));
+          b.onclick = function () { sealUndo(); received = received.slice(0, -1); renderPay(); };
+        } else {
+          b.textContent = k;
+          b.onclick = function () {
+            sealUndo();
+            var next = (received + k).replace(/^0+/, '');
+            if (next.length > 7) return;
+            received = next; renderPay();
+          };
+        }
+        keys.appendChild(b);
+      });
+    });
+  })();
+  $('clearCartBtn').onclick = clearAll;
+  $('recvClear').onclick = function () { sealUndo(); received = ''; renderPay(); };
+  $('doneBtn').onclick = function () {
+    var t = total(), r = receivedNum();
+    if (t > 0 && received !== '' && r < t) {
+      toast('お預かりが足りません(あと' + yen(t - r) + ')', 'このまま終わる', finishSale, 6000);
+      return;
+    }
+    finishSale();
+  };
+
+  // ================= 商品登録画面 =================
+  var CAT_OPTIONS_HTML_VALUE = '';
+  function fillCatSelect(sel, value) {
+    sel.innerHTML = '';
+    var o0 = el('option', '', '未分類'); o0.value = ''; sel.appendChild(o0);
+    categories.forEach(function (c) { var o = el('option', '', c); o.value = c; sel.appendChild(o); });
+    sel.value = value || '';
+    if (sel.value !== (value || '')) sel.value = '';
+  }
+  var LASTCAT_KEY = 'kantan-register-lastcat-v1';
+  var newCatValue = lsGet(LASTCAT_KEY) || '';
+  function renderCatSelects() { fillCatSelect($('newCat'), newCatValue); }
+  $('newCat').onchange = function () { newCatValue = this.value; lsSet(LASTCAT_KEY, newCatValue); };
+
+  function markReading(input, p) { input.classList.toggle('need', needsReading(p)); }
+  function flashRow(id) {
+    var r = document.querySelector('#manageList .m-row[data-id="' + id + '"]');
+    if (!r) return;
+    r.classList.remove('flash'); void r.offsetWidth; r.classList.add('flash');
+    if (r.scrollIntoView) r.scrollIntoView({ block: 'nearest' });
+    setTimeout(function () { r.classList.remove('flash'); }, 1600);
+  }
+  function renderManage() {
+    var list = $('manageList');
+    list.innerHTML = '';
+    $('countLabel').textContent = products.length ? '(' + products.length + '件)' : '';
+    $('sortKanaBtn').disabled = $('sortCatBtn').disabled = products.length < 2;
+    if (products.length === 0) {
+      list.appendChild(el('div', 'cart-empty', 'まだありません。上のフォームから追加してください。'));
+      return;
+    }
+    products.forEach(function (p, idx) {
+      var row = el('div', 'm-row'); row.dataset.id = p.id;
+
+      var mv = el('div', 'move');
+      var top = el('button'); top.type = 'button'; top.setAttribute('aria-label', '一番上へ'); top.appendChild(icon('top')); top.disabled = idx === 0;
+      top.onclick = function () { moveTo(idx, 0, p.id); };
+      var up = el('button'); up.type = 'button'; up.setAttribute('aria-label', '1つ上へ'); up.appendChild(icon('up')); up.disabled = idx === 0;
+      up.onclick = function () { moveTo(idx, idx - 1, p.id); };
+      var dn = el('button'); dn.type = 'button'; dn.setAttribute('aria-label', '1つ下へ'); dn.appendChild(icon('down')); dn.disabled = idx === products.length - 1;
+      dn.onclick = function () { moveTo(idx, idx + 1, p.id); };
+      mv.appendChild(top); mv.appendChild(up); mv.appendChild(dn);
+
+      var nameIn = el('input', 'txt'); nameIn.value = p.name; nameIn.maxLength = 20; nameIn.setAttribute('aria-label', '名前');
+      var readIn = el('input', 'txt'); readIn.value = p.reading; readIn.placeholder = 'よみがな(あいうえお順用)'; readIn.setAttribute('aria-label', 'よみがな');
+      markReading(readIn, p);
+      nameIn.onchange = function () {
+        var v = nameIn.value.trim();
+        if (!v) { nameIn.value = p.name; return; }
+        var dup = products.some(function (q) { return q !== p && nameKey(q.name) === nameKey(v); });
+        if (dup) { nameIn.value = p.name; toast('「' + v + '」はすでに登録されています。元の名前に戻しました。'); return; }
+        var oldAuto = autoReading(p.name);
+        p.name = v;
+        if (!p.reading || p.reading === oldAuto) p.reading = autoReading(v);
+        readIn.value = p.reading; markReading(readIn, p);
+        saveProducts(); renderProducts(); renderCart();
+      };
+      readIn.onchange = function () {
+        p.reading = toHira(nfkc(readIn.value)).replace(/\s/g, '');
+        readIn.value = p.reading; markReading(readIn, p);
+        saveProducts();
+      };
+
+      var wrap = el('div', 'yen-wrap');
+      wrap.appendChild(el('span', 'yen', '¥'));
+      var priceIn = el('input', 'txt'); priceIn.value = p.price; priceIn.inputMode = 'numeric'; priceIn.maxLength = 12; priceIn.setAttribute('aria-label', '金額');
+      priceIn.onchange = function () {
+        var v = parsePrice(priceIn.value);
+        if (v === null) { priceIn.value = p.price; toast('金額は数字で入力してください。元の金額に戻しました。'); return; }
+        p.price = v; priceIn.value = v; saveProducts(); renderProducts(); renderCart(); renderPay();
+      };
+      wrap.appendChild(priceIn);
+
+      var del = el('button', 'btn btn-red btn-sm'); del.type = 'button';
+      del.appendChild(icon('trash')); var delText = document.createTextNode('削除'); del.appendChild(delText);
+      var armed = false, t = null;
+      del.onclick = function () {
+        if (armed) {
+          clearTimeout(t);
+          var at = products.indexOf(p), qty = cart[p.id];
+          products.splice(at, 1); delete cart[p.id];
+          var entry = { p: p, idx: at, qty: qty };
+          recentDeleted.unshift(entry); recentDeleted = recentDeleted.slice(0, 10);
+          saveProducts(); renderAll();
+          toast('「' + p.name + '」を削除しました', '元に戻す', function () { restoreDeleted(entry); }, 8000);
+        } else {
+          armed = true; delText.nodeValue = '本当に削除';
+          t = setTimeout(function () { armed = false; delText.nodeValue = '削除'; }, 3000);
+        }
+      };
+
+      var sub = el('div', 'sub');
+      var catSel = el('select', 'txt catSel'); catSel.setAttribute('aria-label', '分野');
+      fillCatSelect(catSel, p.cat);
+      catSel.onchange = function () { p.cat = catSel.value; saveProducts(); renderChips(); renderProducts(); };
+      sub.appendChild(catSel); sub.appendChild(readIn);
+
+      row.appendChild(mv); row.appendChild(nameIn); row.appendChild(wrap); row.appendChild(del); row.appendChild(sub);
+      list.appendChild(row);
+    });
+  }
+  function moveTo(a, b, id) {
+    if (b < 0 || b >= products.length || a === b) return;
+    var item = products.splice(a, 1)[0];
+    products.splice(b, 0, item);
+    saveProducts(); renderAll(); flashRow(id);
+  }
+  function restoreDeleted(entry) {
+    var i = recentDeleted.indexOf(entry);
+    if (i >= 0) recentDeleted.splice(i, 1);
+    if (findByName(entry.p.name)) { toast('同じ名前の商品がすでにあるため、戻せませんでした。'); renderRecentDeleted(); return; }
+    ensureCat(entry.p.cat);
+    products.splice(Math.min(entry.idx, products.length), 0, entry.p);
+    if (entry.qty) cart[entry.p.id] = entry.qty;
+    saveAll(); renderAll(); flashRow(entry.p.id);
+  }
+  function renderRecentDeleted() {
+    var box = $('recentDel');
+    box.innerHTML = '';
+    if (recentDeleted.length === 0) return;
+    box.appendChild(el('div', 'sub-title', '最近消した商品(「戻す」で元の位置に戻ります)'));
+    recentDeleted.forEach(function (entry) {
+      var row = el('div', 'del-row');
+      row.appendChild(el('span', '', entry.p.name + '(' + yen(entry.p.price) + ')'));
+      var b = el('button', 'btn btn-amber btn-sm', '戻す'); b.type = 'button';
+      b.onclick = function () { restoreDeleted(entry); };
+      row.appendChild(b);
+      box.appendChild(row);
+    });
+  }
+
+  // ---- 並べ替え ----
+  function sortMsg(text, bad) { var m = $('sortMsg'); m.textContent = text; m.className = 'csv-msg' + (bad ? ' bad' : ''); }
+  function sortKana() {
+    var before = products.slice();
+    products = stableSort(products, function (a, b) { return cmpKana(readingKey(a), readingKey(b)); });
+    saveProducts(); renderAll();
+    var missing = products.filter(needsReading).length;
+    var note = categories.length ? ' レジ画面は分野ごとに表示され、その中でこの順に並びます。' : '';
+    sortMsg(missing ? 'あいうえお順に並べ替えました。よみがなが空の商品が ' + missing + '件 あります(黄色い欄)。入力してもう一度押すと正しい位置に入ります。' + note : 'あいうえお順に並べ替えました。' + note);
+    toastUndo('あいうえお順に並べ替えました', function () { products = before; saveProducts(); renderAll(); sortMsg(''); });
+  }
+  function sortByCat() {
+    var before = products.slice();
+    var order = function (p) { var i = categories.indexOf(p.cat); return i < 0 ? 9999 : i; };
+    products = stableSort(products, function (a, b) { return order(a) - order(b); });
+    saveProducts(); renderAll();
+    sortMsg('分野ごとにまとめました(分野の中の並びは、そのままです)。あいうえお順にしたいときは、先に「あいうえお順」を押してから、これを押してください。');
+    toastUndo('分野ごとにまとめました', function () { products = before; saveProducts(); renderAll(); sortMsg(''); });
+  }
+  $('sortKanaBtn').onclick = sortKana;
+  $('sortCatBtn').onclick = sortByCat;
+
+  // ---- 追加フォーム ----
+  $('addForm').onsubmit = function (e) {
+    e.preventDefault();
+    var name = $('newName').value.trim();
+    var priceRaw = $('newPrice').value;
+    var price = parsePrice(priceRaw);
+    var err = $('addErr');
+    if (!name) { err.textContent = '名前を入力してください。'; $('newName').focus(); return; }
+    if (priceRaw.trim() === '') { err.textContent = '金額を入力してください。'; $('newPrice').focus(); return; }
+    if (price === null) { err.textContent = '金額は数字で入力してください(例: 300 や １,５００)。'; $('newPrice').focus(); return; }
+    if (findByName(name)) {
+      err.textContent = '「' + name + '」はすでに登録されています。金額などを変えるときは、下の一覧で直してください。';
+      $('newPrice').value = ''; $('newName').focus(); if ($('newName').select) $('newName').select();
+      return;
+    }
+    var id = newId();
+    products.push({ id: id, name: name, price: price, cat: $('newCat').value, reading: autoReading(name) });
+    saveProducts();
+    $('newName').value = ''; $('newPrice').value = ''; err.textContent = '';
+    renderAll();
+    $('newName').focus();
+    var added = products[products.length - 1];
+    if (needsReading(added)) toast('「' + added.name + '」を追加しました。よみがなが分からなかったので、一覧の黄色い欄に入力すると、あいうえお順に並べられます。', null, null, 6000);
+    else toast('「' + added.name + '」を追加しました(' + yen(added.price) + (added.cat ? '・' + added.cat : '') + ')', null, null, 2200);
+  };
+
+  // ---- 分野 ----
+  var QUICK_CATS = ['野菜', '果物', '加工品', 'お米・雑穀', '花・苗'];
+  function addCategory(name) {
+    name = (name || '').trim();
+    var err = $('catErr');
+    if (!name) { err.textContent = '分野の名前を入力してください。'; return false; }
+    if (categories.some(function (c) { return nfkc(c) === nfkc(name); })) { err.textContent = '「' + name + '」はすでにあります。'; return false; }
+    categories.push(name); saveCats(); err.textContent = '';
+    renderAll();
+    return true;
+  }
+  $('catForm').onsubmit = function (e) {
+    e.preventDefault();
+    if (addCategory($('newCatName').value)) $('newCatName').value = '';
+  };
+  function renderCatCard() {
+    $('catCount').textContent = categories.length ? '(' + categories.length + '個)' : '';
+    var quick = $('catQuick');
+    quick.innerHTML = '';
+    var left = QUICK_CATS.filter(function (c) { return !categories.some(function (x) { return nfkc(x) === nfkc(c); }); });
+    if (left.length) {
+      quick.appendChild(el('span', 'quick-label', 'ワンタップで追加:'));
+      left.forEach(function (c) {
+        var b = el('button', 'btn btn-gray btn-sm', '+ ' + c); b.type = 'button';
+        b.onclick = function () { addCategory(c); };
+        quick.appendChild(b);
+      });
+    }
+    var list = $('catList');
+    list.innerHTML = '';
+    categories.forEach(function (c, i) {
+      var row = el('div', 'c-row');
+      var mv = el('div', 'move');
+      var up = el('button'); up.type = 'button'; up.setAttribute('aria-label', '分野を上へ'); up.appendChild(icon('up')); up.disabled = i === 0;
+      up.onclick = function () { moveCategory(i, i - 1); };
+      var dn = el('button'); dn.type = 'button'; dn.setAttribute('aria-label', '分野を下へ'); dn.appendChild(icon('down')); dn.disabled = i === categories.length - 1;
+      dn.onclick = function () { moveCategory(i, i + 1); };
+      mv.appendChild(up); mv.appendChild(dn);
+      var inp = el('input', 'txt'); inp.value = c; inp.maxLength = 12; inp.setAttribute('aria-label', '分野の名前');
+      inp.onchange = function () {
+        var v = inp.value.trim();
+        if (!v) { inp.value = c; return; }
+        if (categories.some(function (x, j) { return j !== i && nfkc(x) === nfkc(v); })) { inp.value = c; toast('「' + v + '」はすでにあります。元の名前に戻しました。'); return; }
+        products.forEach(function (p) { if (p.cat === c) p.cat = v; });
+        categories[i] = v; saveAll(); renderAll();
+      };
+      var n = products.filter(function (p) { return p.cat === c; }).length;
+      var cnt = el('span', 'count', n + '品');
+      var del = el('button', 'btn btn-red btn-sm'); del.type = 'button';
+      del.appendChild(icon('trash')); var dt = document.createTextNode('削除'); del.appendChild(dt);
+      var armed = false, tm = null;
+      del.onclick = function () {
+        if (armed) {
+          clearTimeout(tm);
+          var affected = products.filter(function (p) { return p.cat === c; });
+          affected.forEach(function (p) { p.cat = ''; });
+          categories.splice(i, 1); saveAll(); renderAll();
+          toast('分野「' + c + '」を削除しました(中の商品は「未分類」)', '元に戻す', function () {
+            categories.splice(Math.min(i, categories.length), 0, c);
+            affected.forEach(function (p) { p.cat = c; });
+            saveAll(); renderAll();
+          }, 9000);
+        } else {
+          armed = true; dt.nodeValue = n ? '本当に削除(' + n + '品は未分類に)' : '本当に削除';
+          tm = setTimeout(function () { armed = false; dt.nodeValue = '削除'; }, 3500);
+        }
+      };
+      row.appendChild(mv); row.appendChild(inp); row.appendChild(cnt); row.appendChild(del);
+      list.appendChild(row);
+    });
+  }
+  function moveCategory(a, b) {
+    if (b < 0 || b >= categories.length) return;
+    var c = categories.splice(a, 1)[0];
+    categories.splice(b, 0, c);
+    saveCats(); renderAll();
+  }
+
+  // ================= CSV 入出力 =================
+  function csvQuote(v) {
+    v = String(v);
+    return /[",\r\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+  }
+  function productsInCategoryOrder() {
+    var out = [];
+    categories.forEach(function (c) { products.forEach(function (p) { if (p.cat === c) out.push(p); }); });
+    products.forEach(function (p) { if (!p.cat || categories.indexOf(p.cat) < 0) out.push(p); });
+    return out;
+  }
+  function toCsv() {
+    var lines = ['名前,金額,分野,よみ'];
+    productsInCategoryOrder().forEach(function (p) { lines.push([csvQuote(p.name), p.price, csvQuote(p.cat || ''), csvQuote(p.reading || '')].join(',')); });
+    return lines.join('\r\n') + '\r\n';
+  }
+  // 戻り値の各行に .line(元ファイルの行番号)を持たせる
+  function parseCsvRows(text) {
+    text = text.replace(/^﻿/, '');
+    var lines = text.split(/\r\n|\n|\r/);
+    var first = '';
+    for (var i = 0; i < lines.length; i++) { if (lines[i].trim() !== '') { first = lines[i]; break; } }
+    var delim = ',';
+    if (first.indexOf('\t') >= 0) delim = '\t';
+    else if (first.indexOf(',') < 0 && first.indexOf(';') >= 0) delim = ';';
+    var rows = [], row = [], cur = '', inQ = false, atStart = true, line = 1, rowLine = 1;
+    function endRow() { row.push(cur); row.line = rowLine; rows.push(row); row = []; cur = ''; atStart = true; rowLine = line; }
+    for (var k = 0; k < text.length; k++) {
+      var c = text[k];
+      if (inQ) {
+        if (c === '"') { if (text[k + 1] === '"') { cur += '"'; k++; } else { inQ = false; } }
+        else { cur += c; }
+      } else if (c === '"' && atStart) { inQ = true; atStart = false; }
+      else if (c === delim) { row.push(cur); cur = ''; atStart = true; }
+      else if (c === '\r' || c === '\n') {
+        if (c === '\r' && text[k + 1] === '\n') k++;
+        line++; endRow();
+      } else { cur += c; atStart = false; }
+    }
+    if (cur !== '' || row.length) endRow();
+    return rows.filter(function (r) { return r.some(function (x) { return x.trim() !== ''; }); });
+  }
+  var H_NAME = /^(名前|名称|品名|品目|商品名?|name|item)$/i, H_PRICE = /^(金額|価格|値段|単価|price)$/i,
+      H_CAT = /^(分野|分類|カテゴリー?|種類|category)$/i, H_READ = /^(よみ|よみがな|読み|読み仮名|ふりがな|フリガナ|ヨミ|reading|kana)$/i;
+  // 戻り値: { items:[{name,price,cat,reading}], errors:[文字列] }
+  function parseProductsCsv(text) {
+    var rows = parseCsvRows(text), items = [], errors = [];
+    var idx = { name: 0, price: 1, cat: 2, reading: 3 }, start = 0;
+    if (rows.length) {
+      var h = rows[0].map(function (c) { return nfkc(c).trim(); });
+      if (h.some(function (c) { return H_NAME.test(c) || H_PRICE.test(c); })) {
+        start = 1;
+        var f = function (re, dflt) { var j = -1; h.forEach(function (c, n) { if (j < 0 && re.test(c)) j = n; }); return j < 0 ? dflt : j; };
+        idx = { name: f(H_NAME, 0), price: f(H_PRICE, 1), cat: f(H_CAT, -1), reading: f(H_READ, -1) };
+      }
+    }
+    for (var i = start; i < rows.length; i++) {
+      var r = rows[i], lineNo = r.line || (i + 1);
+      var name = (r[idx.name] || '').trim();
+      var price = parsePrice(r[idx.price]);
+      if (!name) { errors.push(lineNo + '行目: 名前が空です(読み飛ばしました)'); continue; }
+      if (price === null) { errors.push(lineNo + '行目「' + name + '」: 金額が数字ではありません(読み飛ばしました)'); continue; }
+      items.push({
+        name: name.slice(0, 20), price: price,
+        cat: idx.cat >= 0 ? (r[idx.cat] || '').trim().slice(0, 12) : '',
+        reading: idx.reading >= 0 ? toHira(nfkc(r[idx.reading] || '')).replace(/\s/g, '') : ''
+      });
+    }
+    return { items: items, errors: errors };
+  }
+  function dedupeItems(items) {
+    var map = Object.create(null), out = [], dups = [];
+    items.forEach(function (it) {
+      var k = nameKey(it.name);
+      if (k in map) { dups.push({ name: it.name, from: out[map[k]].price, to: it.price }); out[map[k]] = it; }
+      else { map[k] = out.length; out.push(it); }
+    });
+    return { items: out, dups: dups };
+  }
+  function csvMsg(text, bad) { var m = $('csvMsg'); m.textContent = text; m.className = 'csv-msg' + (bad ? ' bad' : ''); }
+
+  // ---- 読み込み前の状態を控える(あとで戻せる) ----
+  var backup = jsonGet(BACKUP_KEY, null);
+  function copyItems(list) { return list.map(function (p) { return { id: p.id, name: p.name, price: p.price, cat: p.cat || '', reading: p.reading || '' }; }); }
+  function setBackup() {
+    backup = { at: new Date().toISOString(), items: copyItems(products), cats: categories.slice() };
+    lsSet(BACKUP_KEY, JSON.stringify(backup));
+    renderBackupInfo();
+  }
+  function restoreBackup() {
+    if (!backup || !Array.isArray(backup.items)) return;
+    products = backup.items.map(normalizeProduct);
+    categories = Array.isArray(backup.cats) ? backup.cats.slice() : [];
+    products.forEach(function (p) { ensureCat(p.cat); });
+    cart = {}; received = '';
+    saveAll(); renderAll();
+    csvMsg('CSVを読み込む前の状態(' + products.length + '件)に戻しました。');
+    renderBackupInfo();
+  }
+  function renderBackupInfo() {
+    var box = $('backupBox');
+    box.innerHTML = '';
+    if (!backup || !Array.isArray(backup.items)) return;
+    var d = new Date(backup.at), pad = function (n) { return (n < 10 ? '0' : '') + n; };
+    var label = 'CSVを読み込む直前の状態(' + backup.items.length + '件・' + (d.getMonth() + 1) + '月' + d.getDate() + '日 ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) + ')に戻す';
+    var b = el('button', 'btn btn-amber btn-sm'); b.type = 'button';
+    var tn = document.createTextNode(label); b.appendChild(tn);
+    var armed = false, tm = null;
+    b.onclick = function () {
+      if (armed) { clearTimeout(tm); restoreBackup(); return; }
+      armed = true; tn.nodeValue = '本当に戻す(いまの登録内容は置き換わります)';
+      tm = setTimeout(function () { armed = false; tn.nodeValue = label; }, 4000);
+    };
+    box.appendChild(b);
+  }
+
+  // ---- 読み込む内容と、いまの登録との違い ----
+  function computeDiff(items, mode) {
+    var cur = Object.create(null);
+    products.forEach(function (p) { var k = nameKey(p.name); if (!(k in cur)) cur[k] = p; });
+    var seen = Object.create(null), add = [], chg = [], gone = [], same = 0;
+    items.forEach(function (it) {
+      var k = nameKey(it.name); seen[k] = true;
+      var p = cur[k];
+      if (!p) { add.push(it); return; }
+      var priceChg = p.price !== it.price;
+      var catChg = mode === 'replace' ? (it.cat || '') !== (p.cat || '') : (it.cat !== '' && it.cat !== (p.cat || ''));
+      if (priceChg || catChg) chg.push({ name: it.name, p: p, it: it, priceChg: priceChg, catChg: catChg });
+      else same++;
+    });
+    if (mode === 'replace') products.forEach(function (p) { if (!seen[nameKey(p.name)]) gone.push(p); });
+    return { add: add, chg: chg, gone: gone, same: same };
+  }
+
+  function showImportPreview(result, sourceLabel) {
+    var box = $('importPreview');
+    box.innerHTML = '';
+    var errBlock = function () {
+      var eb = el('div', 'errs');
+      eb.appendChild(el('div', '', '読み込めなかった行が ' + result.errors.length + '件 あります(その行は登録されません。枠の中はスクロールできます)'));
+      result.errors.forEach(function (t) { eb.appendChild(el('div', '', t)); });
+      return eb;
+    };
+    var dd = dedupeItems(result.items);
+    var items = dd.items;
+    if (items.length === 0) {
+      csvMsg('読み込める商品が見つかりませんでした。', true);
+      if (result.errors.length) { var pv0 = el('div', 'preview'); pv0.appendChild(errBlock()); box.appendChild(pv0); }
+      return;
+    }
+    csvMsg('');
+    var pv = el('div', 'preview');
+    pv.appendChild(el('h3', '', sourceLabel + ': ' + items.length + '件の商品を読み込めます'));
+    if (result.errors.length) pv.appendChild(errBlock());
+    if (dd.dups.length) pv.appendChild(el('div', 'warn-amber', '同じ名前が2回以上あります: ' + dd.dups.map(function (d) { return d.name + '(' + yen(d.from) + ' → ' + yen(d.to) + ')'; }).join('、') + '(1つにまとめ、あとの行の内容を使います)'));
+
+    var rr = el('div', 'radio-row');
+    var l1 = el('label'), r1 = el('input'); r1.type = 'radio'; r1.name = 'impMode'; r1.value = 'replace'; r1.checked = true;
+    var t1 = el('span'); t1.appendChild(document.createTextNode('いまの商品をすべて、この内容に置き換える'));
+    t1.appendChild(el('small', '', '(CSVに無い商品は消えます。書き出したCSVを編集して戻すときはこちら)'));
+    l1.appendChild(r1); l1.appendChild(t1);
+    var l2 = el('label'), r2 = el('input'); r2.type = 'radio'; r2.name = 'impMode'; r2.value = 'merge';
+    var t2 = el('span'); t2.appendChild(document.createTextNode('いまの商品は残して、追加・更新だけする'));
+    t2.appendChild(el('small', '', '(同じ名前の商品は金額や分野を更新、新しい名前は追加。消すことはしません)'));
+    l2.appendChild(r2); l2.appendChild(t2);
+    rr.appendChild(l1); rr.appendChild(l2);
+    pv.appendChild(rr);
+
+    var diffBox = el('div');
+    pv.appendChild(diffBox);
+    function curMode() { return r2.checked ? 'merge' : 'replace'; }
+    function renderDiff() {
+      diffBox.innerHTML = '';
+      var d = computeDiff(items, curMode());
+      var sum = '追加 ' + d.add.length + '件 / 金額・分野が変わる ' + d.chg.length + '件 / 変更なし ' + d.same + '件' + (curMode() === 'replace' ? ' / 消える ' + d.gone.length + '件' : '');
+      diffBox.appendChild(el('div', 'diff-sum', 'この内容で登録すると: ' + sum));
+      if (d.add.length + d.chg.length + d.gone.length > 0) {
+        diffBox.appendChild(el('div', 'diff-note', '変わる内容(全' + (d.add.length + d.chg.length + d.gone.length) + '件・枠の中はスクロールできます)'));
+        var list = el('div', 'diff-list');
+        var line = function (cls, tag, text) { var row = el('div', cls); row.appendChild(el('span', 'tag', tag)); row.appendChild(el('span', '', text)); list.appendChild(row); };
+        d.gone.forEach(function (p) { line('gone', '消える', p.name + '(' + yen(p.price) + ')'); });
+        d.chg.forEach(function (c) {
+          var parts = [];
+          if (c.priceChg) parts.push(yen(c.p.price) + ' → ' + yen(c.it.price));
+          if (c.catChg) parts.push('分野 ' + catLabel(c.p.cat) + ' → ' + catLabel(c.it.cat));
+          line('chg', '変更', c.name + '  ' + parts.join(' / '));
+        });
+        d.add.forEach(function (it) { line('add', '追加', it.name + '(' + yen(it.price) + (it.cat ? '・' + it.cat : '') + ')'); });
+        diffBox.appendChild(list);
+      }
+    }
+    r1.onchange = renderDiff; r2.onchange = renderDiff;
+    renderDiff();
+
+    var acts = el('div', 'csv-actions');
+    var ok = el('button', 'btn btn-green', 'この内容で登録する'); ok.type = 'button';
+    ok.onclick = function () {
+      var mode = curMode();
+      var d = computeDiff(items, mode);
+      setBackup();                                  // 戻せるように、いまの内容を控える
+      if (mode === 'replace') {
+        products = items.map(function (it) { return { id: newId(), name: it.name, price: it.price, cat: it.cat || '', reading: it.reading || autoReading(it.name) }; });
+        cart = {}; received = '';
+        categories = [];                                  // 分野の並びは、CSVに出てくる順にそろえる
+      } else {
+        items.forEach(function (it) {
+          var f = findByName(it.name);
+          if (f) { f.price = it.price; if (it.cat) f.cat = it.cat; if (it.reading) f.reading = it.reading; }
+          else products.push({ id: newId(), name: it.name, price: it.price, cat: it.cat || '', reading: it.reading || autoReading(it.name) });
+        });
+      }
+      items.forEach(function (it) { ensureCat(it.cat); });
+      saveAll(); renderAll();
+      box.innerHTML = '';
+      csvMsg(mode === 'replace'
+        ? '置き換えました(いま ' + products.length + '件)。消えた ' + d.gone.length + '件・変更 ' + d.chg.length + '件・追加 ' + d.add.length + '件。'
+        : '追加 ' + d.add.length + '件・変更 ' + d.chg.length + '件・変更なし ' + d.same + '件。');
+      toast('CSVを読み込みました', '元に戻す', restoreBackup, 9000);
+    };
+    var cancel = el('button', 'btn btn-gray', 'やめる'); cancel.type = 'button';
+    cancel.onclick = function () { box.innerHTML = ''; csvMsg(''); };
+    acts.appendChild(ok); acts.appendChild(cancel);
+    pv.appendChild(acts);
+    box.appendChild(pv);
+  }
+
+  function downloadCsv(text, filename) {
+    var blob = new Blob(['\uFEFF' + text], { type: 'text/csv;charset=utf-8' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    setTimeout(function () { URL.revokeObjectURL(url); a.remove(); }, 1500);
+  }
+  var TEMPLATE_CSV = '名前,金額,分野,よみ\r\nトマト,300,野菜,とまと\r\nきゅうり,150,野菜,きゅうり\r\n長ねぎ,150,野菜,ながねぎ\r\nりんご,200,果物,りんご\r\nいちごジャム,600,加工品,いちごじゃむ\r\n手作りクッキー,350,加工品,てづくりくっきー\r\nお米(2kg),1500,お米・雑穀,おこめ\r\n';
+  function giveTemplate() {
+    $('csvText').value = TEMPLATE_CSV;
+    try {
+      downloadCsv(TEMPLATE_CSV, 'kantan-register-template.csv');
+      csvMsg('ひな形CSVを書き出しました。Excelなどで開いて、自分の商品に書き換えてください(分野・よみは空でも構いません)。保存されない端末では、下の欄に出した文字をコピーして使えます。');
+      toast('ひな形CSVを書き出しました(kantan-register-template.csv)。保存されないときは「商品登録」画面の下のCSV欄からコピーできます。', null, null, 6000);
+    } catch (e) {
+      csvMsg('ひな形を下の欄に表示しました。コピーして使ってください。');
+      toast('ひな形をCSV欄に表示しました。「商品登録」画面の下にあります。', null, null, 6000);
+    }
+  }
+  $('csvTemplateBtn').onclick = giveTemplate;
+  $('csvTemplateBtn2').onclick = giveTemplate;
+  $('csvExportBtn').onclick = function () {
+    try {
+      var dt = new Date(), pad2 = function (n) { return (n < 10 ? '0' : '') + n; };
+      downloadCsv(toCsv(), 'kantan-register-products-' + dt.getFullYear() + pad2(dt.getMonth() + 1) + pad2(dt.getDate()) + '.csv');
+      csvMsg('CSVファイルを書き出しました(' + products.length + '件)。保存されない端末では、下の「いまの登録内容をここに表示」をお使いください。');
+    } catch (e) {
+      csvMsg('ファイルの書き出しに失敗しました。「いまの登録内容をここに表示」からコピーしてください。', true);
+    }
+  };
+  $('csvShowBtn').onclick = function () { $('csvText').value = toCsv(); csvMsg('いまの登録内容を表示しました。全部選んでコピーできます。'); };
+  $('csvPickBtn').onclick = function () { $('csvFile').click(); };
+  $('csvFile').onchange = function () {
+    var f = this.files && this.files[0];
+    var input = this;
+    if (!f) return;
+    var fr = new FileReader();
+    fr.onload = function () {
+      var buf = fr.result, text;
+      try { text = new TextDecoder('utf-8', { fatal: true }).decode(buf); }
+      catch (e) {
+        try { text = new TextDecoder('shift_jis').decode(buf); }   // Excel(日本語Windows)のCSV
+        catch (e2) { text = new TextDecoder('utf-8').decode(buf); }
+      }
+      showImportPreview(parseProductsCsv(text), 'ファイル「' + f.name + '」');
+      input.value = '';
+    };
+    fr.onerror = function () { csvMsg('ファイルを読み込めませんでした。', true); input.value = ''; };
+    fr.readAsArrayBuffer(f);
+  };
+  $('csvTextImportBtn').onclick = function () {
+    var t = $('csvText').value;
+    if (t.trim() === '') { csvMsg('上の欄にCSVの内容を貼り付けてから押してください。', true); return; }
+    showImportPreview(parseProductsCsv(t), '貼り付けた内容');
+  };
+
+  // ================= タブ切り替え・レジ専用モード =================
+  function setMode(m) {
+    var reg = (m === 'register');
+    $('viewRegister').hidden = !reg;
+    $('viewManage').hidden = reg;
+    $('tabRegister').classList.toggle('active', reg);
+    $('tabManage').classList.toggle('active', !reg);
+    if (reg) { renderChips(); renderProducts(); renderCart(); renderPay(); }
+  }
+  $('tabRegister').onclick = function () { setMode('register'); };
+  $('tabManage').onclick = function () { setMode('manage'); };
+
+  function setLocked(on) {
+    document.body.classList.toggle('locked', on);
+    lsSet(LOCK_KEY, on ? '1' : '0');
+  }
+  $('lockBtn').onclick = function () {
+    if (products.length === 0) { toast('先に商品を登録してください。'); return; }
+    setLocked(true); setMode('register');
+    toast('レジ専用モードにしました。解除は、左上の「かんたんレジ」を3秒おし続けます。', null, null, 6000);
+  };
+  $('lockBadge').onclick = function () { toast('解除するには、左上の「かんたんレジ」の文字を3秒おし続けてください。', null, null, 5000); };
+  (function () {
+    var title = $('appTitle'), holdT = null, hintT = null;
+    function cancelHold() { clearTimeout(holdT); clearTimeout(hintT); }
+    title.addEventListener('pointerdown', function () {
+      if (!document.body.classList.contains('locked')) return;
+      cancelHold();
+      hintT = setTimeout(function () { toast('そのままおし続けてください…', null, null, 2500); }, 800);
+      holdT = setTimeout(function () { setLocked(false); toast('レジ専用モードを解除しました。'); }, 3000);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { title.addEventListener(ev, cancelHold); });
+    title.addEventListener('contextmenu', function (e) { e.preventDefault(); });
+  })();
+
+  // iOSのピンチ拡大を防ぐ(ダブルタップ拡大は CSS の touch-action で防ぐ。タップは握りつぶさない)
+  document.addEventListener('gesturestart', function (e) { e.preventDefault(); });
+
+  // レジ画面のボタンは、指で押したとき「click」を作らず、直接動かす。
+  // (iPadの一部のアプリ内ビューアは、画面をタップするたびに上のバーを出し入れして画面が上下に動くため。
+  //  スクロールのためになぞったときは動かさない)
+  (function () {
+    var startX = 0, startY = 0, moved = false, multi = false;
+    var SCOPE = '#viewRegister, #chooseModal, #toast';
+    document.addEventListener('touchstart', function (e) {
+      multi = e.touches.length > 1;
+      var t = e.touches[0]; startX = t.clientX; startY = t.clientY; moved = false;
+    }, { passive: true, capture: true });
+    document.addEventListener('touchmove', function (e) {
+      var t = e.touches[0];
+      if (Math.abs(t.clientX - startX) > 10 || Math.abs(t.clientY - startY) > 10) moved = true;
+    }, { passive: true, capture: true });
+    document.addEventListener('touchend', function (e) {
+      if (moved || multi || e.changedTouches.length !== 1) return;
+      var node = e.target && e.target.closest ? e.target : null;
+      var btn = node && node.closest('button');
+      if (!btn || !btn.closest(SCOPE) || btn.disabled || typeof btn.onclick !== 'function') return;
+      e.preventDefault();                       // これで click は作られない
+      btn.onclick.call(btn, e);
+    }, { passive: false, capture: true });
+  })();
+
+  // ================= 最初から入れておく商品(CSV) =================
+  // 初めて開いたとき、登録が空なら自動で読み込む。差し替えるときは、下の文字列をCSVの中身に置き換える。
+  var DEFAULT_CSV = "名前,金額,分野,よみ\n新米あやひめ５kg,2900,米,しんまいあやひめ５きろ\nサツマイモ１袋,200,野菜,さつまいも１ふくろ\nサツマイモLサイズ1本,200,野菜,さつまいもLさいず１ほん\nジャガイモ500ｇ,100,野菜,じゃがいも500ｇ\nジャガイモ10kg,1800,野菜,じゃがいも10きろ\nキャベツ１玉,200,野菜,きゃべつ１たま\nハクサイ１玉,300,野菜,はくさい１たま\nカボチャ１玉,500,野菜,かぼちゃ１たま\nニンジン3本,150,野菜,にんじん３ほん\n新ショウガ100ｇ,150,野菜,しんしょうが100ｇ\n長ネギ2本,100,野菜,ながねぎ２ほん\n長ネギ1袋（土つき）,400,野菜,ながねぎ１ふくろ（つちつき）\nニンニク1個,200,野菜,にんにく１こ\nニンニク1パック,500,野菜,にんにく１ぱっく\nトマトジュース1本,200,加工品,とまとじゅーす１ほん\nイチゴジャム1個,300,加工品,いちごじゃむ１こ\nなんばん味噌1個,200,加工品,なんばんみそ１こ\n米こうじ味噌1個,350,加工品,こめこうじみそ1こ\nレジ袋,10,レジ袋,れじふくろ\n"; /* __DEFAULT_CSV__ */
+  var SEEDED_KEY = 'kantan-register-seeded-v1';
+  function seedDefaults() {
+    if (!DEFAULT_CSV.trim() || products.length > 0 || lsGet(SEEDED_KEY) === '1') return;
+    var r = parseProductsCsv(DEFAULT_CSV);
+    var dd = dedupeItems(r.items).items;
+    if (!dd.length) return;
+    dd.forEach(function (it) { ensureCat(it.cat); });
+    products = dd.map(function (it) { return { id: newId(), name: it.name, price: it.price, cat: it.cat || '', reading: it.reading || autoReading(it.name) }; });
+    saveAll(); lsSet(SEEDED_KEY, '1');
+  }
+  if (DEFAULT_CSV.trim()) {
+    $('csvDefaultBtn').hidden = false;
+    $('csvDefaultBtn').onclick = function () { showImportPreview(parseProductsCsv(DEFAULT_CSV), '最初に入っている商品'); };
+  }
+
+  // ================= オフライン準備(アプリとして使うとき) =================
+  var isHttp = /^https?:$/.test(location.protocol);
+  var isStandalone = (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || window.navigator.standalone === true;
+  function showOffline(kind, text) { var b = $('offlineBox'); b.hidden = false; b.className = 'offline-box ' + kind; b.textContent = text; }
+  if (isHttp && 'serviceWorker' in navigator) {
+    try {
+      navigator.serviceWorker.register('sw.js').catch(function () { showOffline('wait', 'オフラインの準備に失敗しました。インターネットにつないで、開き直してください。'); });
+      showOffline('wait', 'オフラインの準備中です。インターネットにつないだまま、しばらくお待ちください…');
+      navigator.serviceWorker.ready.then(function () {
+        return (window.caches ? caches.keys() : Promise.resolve([])).then(function (keys) {
+          if (keys.length) showOffline('ok', '✓ オフラインの準備ができました。電波がなくても、このアプリは開けます。');
+          else showOffline('wait', 'オフラインの準備中です…');
+        });
+      });
+    } catch (e) { /* 何もしない */ }
+    if (!isStandalone) $('installTip').hidden = false;
+  } else if (isHttp) {
+    showOffline('wait', 'このブラウザでは、オフラインの準備ができません。');
+  }
+
+  // ================= 起動 =================
+  seedDefaults();
+  renderAll();
+  renderBackupInfo();
+  if (products.length && lsGet(LOCK_KEY) === '1') setLocked(true);
+  setMode(products.length ? 'register' : 'manage');
+})();
+</script>
+</body>
+</html>
