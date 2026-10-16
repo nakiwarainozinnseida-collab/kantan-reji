@@ -2,7 +2,7 @@
    最初にオンラインで開いたとき、アプリに必要なファイルを端末に保存し、
    そのあとは電波がなくても開けるようにします。
    アプリを更新したときは、下の VERSION の数字を1つ上げてください。 */
-const VERSION = 'v9';
+const VERSION = 'v10';
 const CACHE = 'kantan-register-' + VERSION;
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './icon-maskable-512.png', './apple-touch-icon.png'];
 
