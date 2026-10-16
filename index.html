@@ -213,6 +213,9 @@
   .lock-badge small { font-weight: 500; font-size: 11px; }
   .lock-badge { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   .locked .lock-badge { display: inline-flex; }
+  .ver-tag { margin-left: auto; font-size: 12px; font-weight: 700; color: var(--text-muted); white-space: nowrap; padding: 0 4px; -webkit-user-select: none; user-select: none; }
+  .locked .ver-tag { margin-left: 8px; }
+  .tab { white-space: nowrap; flex: none; }
   .locked #tabManage { display: none; }
   .topbar h1 { -webkit-touch-callout: none; }
   .diff-sum { font-size: 14px; font-weight: 700; margin: 4px 0 6px; line-height: 1.6; }
@@ -299,6 +302,7 @@
     <button class="tab active" id="tabRegister" type="button"><svg class="i"><use href="#i-cart"/></svg>レジ</button>
     <button class="tab" id="tabManage" type="button"><svg class="i"><use href="#i-tag"/></svg>商品登録</button>
     <button class="lock-badge" id="lockBadge" type="button"><svg class="i"><use href="#i-lock"/></svg>レジ専用モード<small>(解除: 3秒長押し)</small></button>
+    <span class="ver-tag" id="verTag"></span>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
@@ -754,7 +758,8 @@
   function renderAll() {
     renderChips(); renderProducts(); renderCart(); renderPay();
     renderCatSelects(); renderManage(); renderCatCard(); renderRecentDeleted();
-    $('verLine').textContent = 'アプリの版: ' + APP_VERSION + '(登録されている商品: ' + products.length + '品)';
+    $('verLine').textContent = 'アプリの版: ' + APP_VERSION;
+    $('verTag').textContent = APP_VERSION;
   }
 
   // ================= レジ操作 =================
