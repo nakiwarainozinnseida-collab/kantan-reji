@@ -101,7 +101,7 @@
   .cart-empty { color: var(--text-faint); text-align: center; padding: 28px 0; font-size: 15px; }
   .cart-row { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; padding: 10px 8px; background: var(--bg-subtle); border-radius: var(--radius-md); margin-bottom: 8px; }
   .cart-row .info { min-width: 0; }
-  .cart-row .info .n { font-weight: 700; font-size: 16px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cart-row .info .n { font-weight: 700; font-size: 16px; line-height: 1.3; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
   .cart-row .info .p { font-size: 13px; color: var(--text-muted); }
   .stepper { display: flex; align-items: center; gap: 6px; }
   .stepper button { appearance: none; border: none; width: 40px; height: 40px; border-radius: 10px; background: var(--bg); box-shadow: var(--shadow-sm); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -109,6 +109,13 @@
   .stepper .q { min-width: 30px; text-align: center; font-size: 18px; font-weight: 800; }
   .cart-row .sub { min-width: 72px; text-align: right; font-weight: 700; font-size: 16px; }
 
+  .checkout-bar { display: none; position: fixed; left: 0; right: 0; bottom: 0; z-index: 25; align-items: center; gap: 12px; padding: 10px 14px calc(10px + env(safe-area-inset-bottom, 0px)); background: var(--bg); box-shadow: 0 -6px 20px rgba(17, 24, 39, 0.12); transition: transform .18s ease; }
+  .checkout-bar.hide { transform: translateY(115%); pointer-events: none; }
+  .checkout-bar .cb-sum { flex: 1; min-width: 0; display: flex; align-items: baseline; gap: 8px; }
+  .checkout-bar .cb-label { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+  .checkout-bar .cb-total { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .checkout-bar .cb-count { font-size: 13px; color: var(--text-muted); }
+  .checkout-bar .btn { padding: 14px 22px; font-size: 17px; flex: none; }
   .pay { flex: none; padding: 12px 20px 20px; border-top: 1px solid #F0F1F3; }
   .sum-line { display: flex; align-items: baseline; justify-content: space-between; padding: 4px 0; }
   .sum-line .label { color: var(--text-muted); font-size: 14px; font-weight: 600; }
@@ -202,6 +209,7 @@
   .stepper button.rm { background: var(--btn-red-bg); color: var(--btn-red-text); }
   .lock-badge { appearance: none; border: none; cursor: pointer; display: none; margin-left: auto; align-items: center; gap: 6px; font-size: 13px; font-weight: 700; color: var(--btn-amber-text); background: var(--btn-amber-bg); padding: 8px 14px; border-radius: 999px; font-family: inherit; }
   .lock-badge small { font-weight: 500; font-size: 11px; }
+  .lock-badge { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
   .locked .lock-badge { display: inline-flex; }
   .locked #tabManage { display: none; }
   .topbar h1 { -webkit-touch-callout: none; }
@@ -221,33 +229,43 @@
     .cart-row { padding: 8px; margin-bottom: 6px; }
   }
   @media (max-width: 640px) {
-    .register { display: flex; flex-direction: column; gap: 12px; padding: 12px; overflow: hidden; }
-    .left { flex: 1 1 0; min-height: 0; }
-    .products-wrap { overflow-y: auto; }
+    /* スマホ(レジ画面): 画面全体をひとつの縦スクロールにする。商品もかごも、増えた分だけ下に伸びる */
+    body.view-register { height: auto; min-height: 100%; }
+    body.view-register .app { height: auto; min-height: 100vh; min-height: 100dvh; }
+    body.view-register .topbar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 30; }
+    .register { display: block; padding: 12px 12px calc(92px + env(safe-area-inset-bottom, 0px)); overflow: visible; }
+    .left { display: block; min-height: 0; }
+    .products-wrap { overflow: visible; }
     .grid { grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 12px; }
-    .product { min-height: 84px; padding: 24px 8px 12px; }
+    .product { min-height: 84px; padding: 28px 8px 12px; }
+    .product .qty-badge { top: 4px; right: 4px; min-width: 24px; height: 24px; padding: 0 6px; font-size: 13px; border-radius: 12px; }
     .product .name { font-size: 16px; }
-    .cat-chips { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    .cat-chips { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; position: sticky; top: calc(var(--topbar-h, 52px) + env(safe-area-inset-top, 0px)); z-index: 20; background: var(--bg-page); padding: 8px 12px; margin: 0 -12px 6px; }
     .chip { padding: 8px 14px; font-size: 14px; }
-    .panel { flex: 0 0 auto; max-height: 66dvh; margin-top: 0; overflow-y: auto; }
+    .panel { flex: none; max-height: none; margin-top: 16px; overflow: visible; }
     .panel-head { padding: 12px 16px 6px; }
-    .cart-list { flex: 1 1 56px; min-height: 56px; }
+    .cart-list { flex: none; min-height: 64px; overflow: visible; padding-bottom: 4px; }
+    .cart-row .info .n { font-size: 15px; }
     .pay { padding: 8px 14px 14px; }
-    .sum-total .val { font-size: 26px; }
-    .sum-recv .val { font-size: 20px; }
-    .change-box { min-height: 44px; margin: 4px 0 8px; padding: 6px 12px; }
-    .change-box .val { font-size: 28px; }
-    .keys { gap: 6px; }
-    .key { height: 36px; font-size: 17px; }
-    .done-btn { padding: 11px; margin-top: 8px; font-size: 16px; }
+    .sum-total .val { font-size: 32px; }
+    .sum-recv .val { font-size: 22px; }
+    .change-box { min-height: 52px; margin: 6px 0 10px; padding: 8px 14px; }
+    .change-box .val { font-size: 32px; }
+    .keys { gap: 8px; }
+    .key { height: 48px; font-size: 19px; }
+    .done-btn { padding: 15px; margin-top: 10px; font-size: 17px; }
+    .checkout-bar { display: flex; }
     .topbar { padding: 0 8px; } .topbar h1 { display: none; }
     .tab { padding: 14px 14px; font-size: 15px; }
-    .m-row { grid-template-columns: auto 1fr 110px auto; }
-    .m-row .sub { grid-template-columns: 1fr; }
+    .m-row { grid-template-columns: auto 1fr auto; }
+    .m-row > input.txt:nth-child(2) { grid-column: 1 / -1; grid-row: 1; min-width: 0; }
+    .m-row > .move { grid-row: 2; grid-column: 1; }
+    .m-row > .yen-wrap { grid-row: 2; grid-column: 2; min-width: 0; }
+    .m-row > .btn-red { grid-row: 2; grid-column: 3; }
+    .m-row .sub { grid-row: 3; grid-column: 1 / -1; grid-template-columns: 1fr 1fr; }
     .manage { padding: 12px; }
     .card { padding: 18px; }
     .toast { max-width: calc(100vw - 24px); right: 12px; top: 6px; }
-    .lock-badge small { display: none; }
   }
 </style>
 </head>
@@ -278,7 +296,7 @@
     <h1 id="appTitle"><svg class="i"><use href="#i-cart"/></svg>かんたんレジ</h1>
     <button class="tab active" id="tabRegister" type="button"><svg class="i"><use href="#i-cart"/></svg>レジ</button>
     <button class="tab" id="tabManage" type="button"><svg class="i"><use href="#i-tag"/></svg>商品登録</button>
-    <button class="lock-badge" id="lockBadge" type="button"><svg class="i"><use href="#i-lock"/></svg>レジ専用モード<small>(解除: 左上の題名を3秒長押し)</small></button>
+    <button class="lock-badge" id="lockBadge" type="button"><svg class="i"><use href="#i-lock"/></svg>レジ専用モード<small>(解除: 3秒長押し)</small></button>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
@@ -308,15 +326,20 @@
       <div class="prev-line" id="prevLine"></div>
       <div class="cart-list" id="cartList"></div>
 
-      <div class="pay">
+      <div class="pay" id="payBox">
         <div class="sum-line sum-total"><span class="label">合計</span><span class="val" id="totalVal">¥0</span></div>
-        <div class="sum-line sum-recv"><span class="label">お預かり<small>お札ボタンは足し算</small><button class="btn btn-gray btn-sm" id="recvClear" type="button">クリア</button></span><span class="val" id="recvVal">¥0</span></div>
+        <div class="sum-line sum-recv"><span class="label">お預かり<small>お札は足し算・数字は入れ直し</small><button class="btn btn-gray btn-sm" id="recvClear" type="button">クリア</button></span><span class="val" id="recvVal">¥0</span></div>
         <div class="change-box idle" id="changeBox"><span class="label" id="changeLabel">おつり</span><span class="val" id="changeVal"></span></div>
 
         <div class="keys" id="keys"></div>
         <button class="btn btn-green done-btn" id="doneBtn" type="button"><svg class="i"><use href="#i-check"/></svg>会計おわり(次のお客様へ)</button>
       </div>
     </div>
+  </div>
+
+  <div class="checkout-bar hide" id="checkoutBar">
+    <div class="cb-sum"><span class="cb-label">合計</span><span class="cb-total" id="cbTotal">¥0</span><span class="cb-count" id="cbCount">0点</span></div>
+    <button class="btn btn-green" id="cbGo" type="button"><svg class="i"><use href="#i-check"/></svg>会計へ</button>
   </div>
 
   <!-- 商品登録 -->
@@ -337,7 +360,7 @@
       </div>
       <div class="card">
         <h2>レジ専用モード(販売中の誤操作よけ)</h2>
-        <p class="hint" style="margin-top:0">販売をはじめる前に押すと「商品登録」タブが隠れ、生徒が商品や金額を書き換えてしまう事故を防げます。<b>解除するときは、画面左上の「かんたんレジ」の文字を3秒間おし続けてください。</b></p>
+        <p class="hint" style="margin-top:0">販売をはじめる前に押すと「商品登録」タブが隠れ、生徒が商品や金額を書き換えてしまう事故を防げます。<b>解除するときは、画面上の「レジ専用モード」の表示(または左上の「かんたんレジ」の文字)を3秒間おし続けてください。</b></p>
         <div style="margin-top:14px"><button class="btn btn-amber" id="lockBtn" type="button"><svg class="i"><use href="#i-lock"/></svg>レジ専用モードにする</button></div>
       </div>
 
@@ -453,6 +476,8 @@
 
   // ================= よみがな(あいうえお順の並べ替え用) =================
   var READ_DICT = {
+    '干':'ほ','株':'かぶ','入':'い','半':'はん','合':'ごう','木':'き',
+    '個':'こ','本':'ほん','枚':'まい','箱':'はこ','把':'わ','房':'ふさ','粒':'つぶ','缶':'かん','瓶':'びん','丁':'ちょう','杯':'はい',
     '小松菜':'こまつな','青梗菜':'ちんげんさい','ほうれん草':'ほうれんそう','法蓮草':'ほうれんそう','水菜':'みずな','春菊':'しゅんぎく','白菜':'はくさい',
     '大根':'だいこん','人参':'にんじん','玉葱':'たまねぎ','玉ねぎ':'たまねぎ','長ねぎ':'ながねぎ','長葱':'ながねぎ','長芋':'ながいも','山芋':'やまいも','里芋':'さといも',
     '馬鈴薯':'ばれいしょ','南瓜':'かぼちゃ','胡瓜':'きゅうり','茄子':'なす','枝豆':'えだまめ','大豆':'だいず','小豆':'あずき','黒豆':'くろまめ','蕪':'かぶ','牛蒡':'ごぼう',
@@ -666,7 +691,7 @@
     });
     if (lastAddedId) {
       var nr = list.querySelector('.cart-row[data-id="' + lastAddedId + '"]');
-      if (nr && nr.scrollIntoView) nr.scrollIntoView({ block: 'nearest' });
+      if (nr && nr.scrollIntoView && !isPhone()) nr.scrollIntoView({ block: 'nearest' });   // スマホは画面全体がスクロールするので、勝手に動かさない
       lastAddedId = null;
     }
   }
@@ -674,6 +699,9 @@
     var t = total(), r = receivedNum();
     $('totalVal').textContent = yen(t);
     $('recvVal').textContent = yen(r);
+    $('cbTotal').textContent = yen(t);
+    var nItems = 0; Object.keys(cart).forEach(function (k) { nItems += cart[k]; });
+    $('cbCount').textContent = nItems + '点';
     var box = $('changeBox'), label = $('changeLabel'), val = $('changeVal');
     box.className = 'change-box';
     if (t === 0) {
@@ -695,9 +723,14 @@
 
   // ================= レジ操作 =================
   function cloneCart() { var o = {}; Object.keys(cart).forEach(function (k) { o[k] = cart[k]; }); return o; }
-  function finishSale() {
+  var phoneMQ = window.matchMedia ? window.matchMedia('(max-width: 640px)') : { matches: false };
+  function isPhone() { return phoneMQ.matches; }
+  function setTopbarH() { var tb = document.querySelector('.topbar'); if (tb) document.documentElement.style.setProperty('--topbar-h', tb.offsetHeight + 'px'); }
+  window.addEventListener('resize', setTopbarH);
+  function finishSale(toTop) {
     var t = total(), r = receivedNum();
     if (t === 0) return;
+    if (toTop === true && isPhone()) window.scrollTo(0, 0);   // 次のお客様のために、商品選びの先頭へ戻る
     var snap = { cart: cloneCart(), received: received, prev: $('prevLine').textContent };
     var ok = received !== '' && r >= t;
     $('prevLine').textContent = '前のお客様: 合計' + yen(t) + (received === '' ? '' : (ok ? ' / おつり' + yen(r - t) : ' / お預かり不足'));
@@ -717,7 +750,8 @@
     var box = document.querySelector('#chooseModal .modal-box');
     box.classList.add('wait'); setTimeout(function () { box.classList.remove('wait'); }, 600);
     var t = total(), r = receivedNum();
-    $('chooseInfo').textContent = '合計' + yen(t) + '・お預かり' + yen(r) + '・おつり' + yen(r - t) + ' のまま、次の商品が押されました。';
+    var pp = findProduct(id);
+    $('chooseInfo').textContent = '合計' + yen(t) + '・お預かり' + yen(r) + '・おつり' + yen(r - t) + ' のまま、次の商品' + (pp ? '「' + pp.name + '」' : '') + 'が押されました。';
     $('chooseModal').hidden = false;
   }
   function closeChoose() { $('chooseModal').hidden = true; pendingId = null; }
@@ -758,9 +792,10 @@
   $('chooseNew').onclick = function () { if (!chooseReady()) return; var id = pendingId; closeChoose(); finishSale(); if (id) doAdd(id); };
   $('chooseSame').onclick = function () { if (!chooseReady()) return; var id = pendingId; closeChoose(); if (id) doAdd(id); };
   $('chooseCancel').onclick = function () { if (chooseReady()) closeChoose(); };
-  $('chooseModal').addEventListener('click', function (e) { if (e.target === this && chooseReady()) closeChoose(); });
 
   // テンキー
+  var billTrail = null;   // お札ボタンで入れた金額の履歴({value, stack})
+  function inTrail() { return billTrail && received === billTrail.value; }
   (function buildKeys() {
     var keys = $('keys');
     var layout = [
@@ -776,36 +811,56 @@
           b.classList.add('quick');
           if (k.q === 'exact') {
             b.classList.add('exact'); b.textContent = 'ちょうど';
-            b.onclick = function () { if (total() > 0) { sealUndo(); received = String(total()); renderPay(); } };
+            b.onclick = function () { if (total() > 0) { sealUndo(); received = String(total()); billTrail = { value: received, stack: [total()] }; renderPay(); } };
           } else {
             b.textContent = k.q.toLocaleString('ja-JP');
-            b.onclick = function () { sealUndo(); received = String(Math.min(9999999, receivedNum() + k.q)); renderPay(); };
+            b.onclick = function () {
+              sealUndo();
+              var oldN = receivedNum(), tr = inTrail() ? billTrail : { value: received, stack: [] };
+              var newN = Math.min(9999999, oldN + k.q);
+              if (newN === oldN) return;
+              received = String(newN); tr.stack.push(newN - oldN); tr.value = received; billTrail = tr; renderPay();
+            };
           }
         } else if (k === 'back') {
           b.classList.add('fn'); b.setAttribute('aria-label', '1文字消す'); b.appendChild(icon('back'));
-          b.onclick = function () { sealUndo(); received = received.slice(0, -1); renderPay(); };
+          b.onclick = function () {
+            sealUndo();
+            if (inTrail() && billTrail.stack.length) {   // お札ボタンのあとは、最後に足した1枚分だけ戻す
+              var n = receivedNum() - billTrail.stack.pop();
+              received = n > 0 ? String(n) : ''; billTrail.value = received;
+            } else { received = received.slice(0, -1); billTrail = null; }
+            renderPay();
+          };
         } else {
           b.textContent = k;
           b.onclick = function () {
             sealUndo();
-            var next = (received + k).replace(/^0+/, '');
+            var fresh = inTrail() && received !== '';
+            var base = fresh ? '' : received;   // お札ボタンのあとの数字は、足さずに入れ直す
+            if (fresh) toast('お札の金額を消して、数字から入れ直しました', null, null, 2200);
+            var next = (base + k).replace(/^0+/, '');
             if (next.length > 7) return;
-            received = next; renderPay();
+            received = next; billTrail = null; renderPay();
           };
         }
         keys.appendChild(b);
       });
     });
   })();
+  $('cbGo').onclick = function () { $('payBox').scrollIntoView({ block: 'end', behavior: 'smooth' }); };
+  if ('IntersectionObserver' in window) {
+    new IntersectionObserver(function (es) { $('checkoutBar').classList.toggle('hide', es[0].isIntersecting); }, { threshold: 0.2 }).observe($('payBox'));
+  } else { $('checkoutBar').classList.remove('hide'); }
   $('clearCartBtn').onclick = clearAll;
   $('recvClear').onclick = function () { sealUndo(); received = ''; renderPay(); };
   $('doneBtn').onclick = function () {
     var t = total(), r = receivedNum();
     if (t > 0 && received !== '' && r < t) {
-      toast('お預かりが足りません(あと' + yen(t - r) + ')', 'このまま終わる', finishSale, 6000);
+      toast('お預かりが足りません(あと' + yen(t - r) + ')', 'このまま終わる', function () { finishSale(true); }, 6000);
       return;
     }
-    finishSale();
+    finishSale(true);
   };
 
   // ================= 商品登録画面 =================
@@ -859,11 +914,13 @@
         if (!v) { nameIn.value = p.name; return; }
         var dup = products.some(function (q) { return q !== p && nameKey(q.name) === nameKey(v); });
         if (dup) { nameIn.value = p.name; toast('「' + v + '」はすでに登録されています。元の名前に戻しました。'); return; }
-        var oldAuto = autoReading(p.name);
+        var oldName = p.name, oldReading = p.reading;
+        var newAuto = autoReading(v);
         p.name = v;
-        if (!p.reading || p.reading === oldAuto) p.reading = autoReading(v);
+        p.reading = newAuto;   // 名前が変わったら、よみも作り直す(漢字が残るときは空にして、黄色で知らせる)
         readIn.value = p.reading; markReading(readIn, p);
         saveProducts(); renderProducts(); renderCart();
+        toast(newAuto ? '名前を「' + v + '」に変えました' : '名前を「' + v + '」に変えました。よみがなの黄色い欄に入力してください。', '元に戻す', function () { p.name = oldName; p.reading = oldReading; saveProducts(); renderAll(); }, 8000);
       };
       readIn.onchange = function () {
         p.reading = toHira(nfkc(readIn.value)).replace(/\s/g, '');
@@ -877,7 +934,9 @@
       priceIn.onchange = function () {
         var v = parsePrice(priceIn.value);
         if (v === null) { priceIn.value = p.price; toast('金額は数字で入力してください。元の金額に戻しました。'); return; }
+        var oldPrice = p.price;
         p.price = v; priceIn.value = v; saveProducts(); renderProducts(); renderCart(); renderPay();
+        if (v !== oldPrice) toast('「' + p.name + '」を ' + yen(oldPrice) + ' → ' + yen(v) + ' に変えました', '元に戻す', function () { p.price = oldPrice; saveProducts(); renderAll(); }, 8000);
       };
       wrap.appendChild(priceIn);
 
@@ -1355,6 +1414,9 @@
     $('viewManage').hidden = reg;
     $('tabRegister').classList.toggle('active', reg);
     $('tabManage').classList.toggle('active', !reg);
+    document.body.classList.toggle('view-register', reg);
+    $('checkoutBar').hidden = !reg;
+    setTopbarH();
     if (reg) { renderChips(); renderProducts(); renderCart(); renderPay(); }
   }
   $('tabRegister').onclick = function () { setMode('register'); };
@@ -1367,20 +1429,23 @@
   $('lockBtn').onclick = function () {
     if (products.length === 0) { toast('先に商品を登録してください。'); return; }
     setLocked(true); setMode('register');
-    toast('レジ専用モードにしました。解除は、左上の「かんたんレジ」を3秒おし続けます。', null, null, 6000);
+    toast('レジ専用モードにしました。解除は、上の「レジ専用モード」の表示を3秒おし続けます。', null, null, 6000);
   };
-  $('lockBadge').onclick = function () { toast('解除するには、左上の「かんたんレジ」の文字を3秒おし続けてください。', null, null, 5000); };
+  $('lockBadge').onclick = function () { toast('解除するには、この「レジ専用モード」の表示を3秒おし続けてください。', null, null, 5000); };
   (function () {
     var title = $('appTitle'), holdT = null, hintT = null;
     function cancelHold() { clearTimeout(holdT); clearTimeout(hintT); }
-    title.addEventListener('pointerdown', function () {
+    function armHold() {
       if (!document.body.classList.contains('locked')) return;
       cancelHold();
       hintT = setTimeout(function () { toast('そのままおし続けてください…', null, null, 2500); }, 800);
       holdT = setTimeout(function () { setLocked(false); toast('レジ専用モードを解除しました。'); }, 3000);
+    }
+    [title, $('lockBadge')].forEach(function (t) {
+      t.addEventListener('pointerdown', armHold);
+      ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { t.addEventListener(ev, cancelHold); });
+      t.addEventListener('contextmenu', function (e) { e.preventDefault(); });
     });
-    ['pointerup', 'pointerleave', 'pointercancel'].forEach(function (ev) { title.addEventListener(ev, cancelHold); });
-    title.addEventListener('contextmenu', function (e) { e.preventDefault(); });
   })();
 
   // iOSのピンチ拡大を防ぐ(ダブルタップ拡大は CSS の touch-action で防ぐ。タップは握りつぶさない)
@@ -1412,7 +1477,7 @@
 
   // ================= 最初から入れておく商品(CSV) =================
   // 初めて開いたとき、登録が空なら自動で読み込む。差し替えるときは、下の文字列をCSVの中身に置き換える。
-  var DEFAULT_CSV = "名前,金額,分野,よみ\n新米あやひめ５kg,2900,米,しんまいあやひめ５きろ\nサツマイモ１袋,200,野菜,さつまいも１ふくろ\nサツマイモLサイズ1本,200,野菜,さつまいもLさいず１ほん\nジャガイモ500ｇ,100,野菜,じゃがいも500ｇ\nジャガイモ10kg,1800,野菜,じゃがいも10きろ\nキャベツ１玉,200,野菜,きゃべつ１たま\nハクサイ１玉,300,野菜,はくさい１たま\nカボチャ１玉,500,野菜,かぼちゃ１たま\nニンジン3本,150,野菜,にんじん３ほん\n新ショウガ100ｇ,150,野菜,しんしょうが100ｇ\n長ネギ2本,100,野菜,ながねぎ２ほん\n長ネギ1袋（土つき）,400,野菜,ながねぎ１ふくろ（つちつき）\nニンニク1個,200,野菜,にんにく１こ\nニンニク1パック,500,野菜,にんにく１ぱっく\nトマトジュース1本,200,加工品,とまとじゅーす１ほん\nイチゴジャム1個,300,加工品,いちごじゃむ１こ\nなんばん味噌1個,200,加工品,なんばんみそ１こ\n米こうじ味噌1個,350,加工品,こめこうじみそ1こ\nレジ袋,10,レジ袋,れじふくろ\n"; /* __DEFAULT_CSV__ */
+  var DEFAULT_CSV = "名前,金額,分野,よみ\r\n米うるち（あやひめ）5kg,2900,米,こめうるちあやひめ5きろ\r\nジャガイモ500g,100,いも類,じゃがいも500ぐらむ\r\nジャガイモ10kg,1800,いも類,じゃがいも10きろ\r\nサツマイモ2本1袋,200,いも類,さつまいも2ほん1ふくろ\r\nサツマイモL1本,200,いも類,さつまいもえる1ほん\r\n長ネギ（北の匠）2kg,400,野菜,ながねぎきたのたくみ2きろ\r\nタマネギ（SY1-018）L玉5kg,600,野菜,たまねぎえすわいいちぜろいちはちえるだま5きろ\r\n赤タマネギL玉2個入り,100,野菜,あかたまねぎえるだま2こいり\r\nカボチャ（九十栗orブラック）,500,野菜,かぼちゃくじゅうくりぶらっく\r\nカボチャ（栗てまり）,100,野菜,かぼちゃくりてまり\r\nショウガ（100g）1袋,150,野菜,しょうが100ぐらむ1ふくろ\r\nショウガ（300g）1袋,400,野菜,しょうが300ぐらむ1ふくろ\r\nホウレンソウ1束,150,野菜,ほうれんそう1たば\r\nロマネスコ1個,200,野菜,ろまねすこ1こ\r\nハクサイ1玉,300,野菜,はくさい1たま\r\nキャベツ1個,200,野菜,きゃべつ1こ\r\nニンジン3本,150,野菜,にんじん3ほん\r\nニンジン3kgネット,400,野菜,にんじん3きろねっと\r\nニンニク（パック）200g,500,野菜,にんにくぱっく200ぐらむ\r\nニンニク（大）1個,200,野菜,にんにくだい1こ\r\nカブ3〜4個,200,野菜,かぶ3〜4こ\r\n大根2〜3本,100,野菜,だいこん2〜3ほん\r\n米こうじ味噌500g,350,加工品,こめこうじみそ500ぐらむ\r\nなんばん味噌85g,200,加工品,なんばんみそ85ぐらむ\r\nイチゴジャム140g,300,加工品,いちごじゃむ140ぐらむ\r\nトマトジュース175g,200,加工品,とまとじゅーす175ぐらむ\r\nレジ袋,10,レジ袋,れじぶくろ\r\n"; /* __DEFAULT_CSV__ */
   var SEEDED_KEY = 'kantan-register-seeded-v1';
   function seedDefaults() {
     if (!DEFAULT_CSV.trim() || products.length > 0 || lsGet(SEEDED_KEY) === '1') return;
@@ -1436,6 +1501,7 @@
     try {
       navigator.serviceWorker.register('sw.js').catch(function () { showOffline('wait', 'オフラインの準備に失敗しました。インターネットにつないで、開き直してください。'); });
       showOffline('wait', 'オフラインの準備中です。インターネットにつないだまま、しばらくお待ちください…');
+      setTimeout(function () { var ob = $('offlineBox'); if (ob && !ob.classList.contains('ok')) showOffline('wait', 'オフラインの準備に時間がかかっています。電波のよい場所で、開き直してください。何度やっても変わらないときは、アプリのファイルが足りない可能性があります。'); }, 30000);
       navigator.serviceWorker.ready.then(function () {
         return (window.caches ? caches.keys() : Promise.resolve([])).then(function (keys) {
           if (keys.length) showOffline('ok', '✓ オフラインの準備ができました。電波がなくても、このアプリは開けます。');
